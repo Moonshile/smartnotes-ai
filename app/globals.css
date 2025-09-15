@@ -1,0 +1,138 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html, body, :root {
+  height: 100%;
+}
+
+body {
+  /* DIA‑like, cool accents (more pop) */
+  --accent-from: #3b82f6; /* blue-500 */
+  --accent-to: #8b5cf6;   /* violet-500 */
+  --glass-bg: rgba(255, 255, 255, 0.7);
+  --glass-border: rgba(255, 255, 255, 0.6);
+  /* Page background: soft blue → violet gradient (less white) */
+  background:
+    radial-gradient(900px 500px at 10% -10%, rgba(191, 219, 254, 0.6), transparent 60%), /* blue-200 */
+    radial-gradient(900px 500px at 90% -20%, rgba(221, 214, 254, 0.58), transparent 60%), /* violet-200 */
+    linear-gradient(180deg, #eef2ff 0%, #e0f2fe 45%, #ede9fe 100%); /* indigo-50 → sky-100 → violet-100 */
+  color: #0f172a;
+}
+
+.scroll-thin::-webkit-scrollbar {
+  width: 8px;
+}
+.scroll-thin::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 9999px;
+}
+
+/* Tiptap default prose-ish styles */
+.ProseMirror { outline: none; }
+.ProseMirror p.is-editor-empty:first-child::before {
+  color: #94a3b8; /* slate-400 */
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  pointer-events: none;
+}
+
+/* Selection & code tweaks */
+::selection { background: #bfdbfe; }
+.ProseMirror code { background: #f1f5f9; padding: 0.2em 0.35em; border-radius: 0.25rem; }
+.ProseMirror pre { background: #0f172a; color: #e2e8f0; padding: 1rem; border-radius: 0.5rem; }
+
+/* AI Insight styling (blockquote) */
+.ProseMirror blockquote {
+  color: #1e3a8a; /* blue-800 */
+  background: linear-gradient(0deg, rgba(99,102,241,0.05), rgba(34,211,238,0.05));
+  border-left: 4px solid #60a5fa; /* blue-400 */
+  border-right: 1px solid rgba(255,255,255,0.7);
+  border-top: 1px solid rgba(255,255,255,0.7);
+  border-bottom: 1px solid rgba(255,255,255,0.7);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  padding: .75rem 1rem;
+  border-radius: .75rem;
+}
+.ProseMirror blockquote p:first-child { display: block; margin-bottom: .25rem; }
+.ProseMirror blockquote p:first-child em {
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+  font-size: .95rem;
+  font-weight: 600;
+  letter-spacing: .01em;
+  background: linear-gradient(90deg, var(--accent-from), var(--accent-to));
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+/* Remove control below the blockquote */
+.ProseMirror [data-ai-remove] {
+  display: inline-block;
+  font-size: .72rem;
+  color: #334155; /* slate-700 */
+  background: rgba(255,255,255,.85);
+  padding: .15rem .55rem;
+  border-radius: .375rem;
+  border: 1px solid rgba(255,255,255,.7);
+  text-decoration: none;
+  cursor: pointer;
+}
+.ProseMirror [data-ai-remove]:hover { background: white; }
+.ProseMirror blockquote p + p {
+  margin-top: .25rem;
+}
+.ProseMirror blockquote li { color: #1e3a8a; }
+
+/* Pretty helpers */
+.glass-card {
+  background: var(--glass-bg);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--glass-border);
+  box-shadow: 0 10px 25px rgba(15, 23, 42, 0.08);
+}
+
+.gradient-text {
+  background: linear-gradient(90deg, var(--accent-from), var(--accent-to));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.accent-border {
+  position: relative;
+}
+.accent-border::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(90deg, rgba(99,102,241,.5), rgba(34,211,238,.5));
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+          mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+          mask-composite: exclude;
+}
+
+/* Hero background that blends header into the page */
+.hero-bg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 360px;
+  /* Aurora header: light purple + blue only */
+  background-image:
+    radial-gradient(740px 340px at 12% -8%, rgba(147, 197, 253, 0.72), transparent 60%), /* blue-300 */
+    radial-gradient(720px 340px at 86% -12%, rgba(196, 181, 253, 0.7), transparent 60%),  /* violet-300 */
+    radial-gradient(620px 300px at 48% -22%, rgba(199, 210, 254, 0.6), transparent 60%);  /* indigo-200 */
+  background-repeat: no-repeat;
+  filter: saturate(1.25) contrast(1.08);
+  /* Fade into page background for a blended look */
+  -webkit-mask-image: linear-gradient(to bottom, rgba(0,0,0,1), rgba(0,0,0,.6) 65%, rgba(0,0,0,0));
+          mask-image: linear-gradient(to bottom, rgba(0,0,0,1), rgba(0,0,0,.6) 65%, rgba(0,0,0,0));
+}

@@ -1,0 +1,19 @@
+<svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="g1" x1="8" y1="8" x2="56" y2="56" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#3B82F6"/>
+      <stop offset="1" stop-color="#8B5CF6"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="4" stdDeviation="6" flood-color="#3b82f6" flood-opacity="0.2"/>
+    </filter>
+  </defs>
+  <rect x="6" y="6" width="52" height="52" rx="14" fill="url(#g1)" filter="url(#shadow)"/>
+  <!-- Spark/star mark -->
+  <path d="M32 18l2.8 6.2L41 27l-6.2 2.8L32 36l-2.8-6.2L23 27l6.2-2.8L32 18z" fill="#FFFFFF" opacity="0.96"/>
+  <path d="M32 22.5l1.9 4.1 4.1 1.9-4.1 1.9L32 34.5l-1.9-4.1-4.1-1.9 4.1-1.9L32 22.5z" fill="#ffffff" opacity="0.9"/>
+  <!-- Cursor overlay -->
+  <g transform="translate(36,34) rotate(-12)">
+    <path d="M0 0 L0 16 L4 12 L8 22 L11 21 L7 11 L12 11 Z" fill="#ffffff" opacity="0.95"/>
+  </g>
+</svg>

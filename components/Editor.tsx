@@ -400,7 +400,8 @@ function escapeHtml(s: string) {
 
 export default Editor
 
-function UploadButton({ onResult }: { onResult: (html: string) => void }) {
+/* Removed legacy UploadButton (and PDF helpers) to avoid unused references in build */
+/* function UploadButton({ onResult }: { onResult: (html: string) => void }) {
   const [busy, setBusy] = useState(false)
   async function handleFile(file: File) {
     const name = file.name.toLowerCase()
@@ -483,7 +484,7 @@ function UploadButton({ onResult }: { onResult: (html: string) => void }) {
       </label>
     </>
   )
-}
+} */
 
 /* Removed upload/OCR helpers for now */
 /* async function ocrPdfClient(file: File): Promise<string> {

@@ -183,7 +183,7 @@ function renderChatHtml(md: string): string {
       blocks.push(`<pre><code>${esc(code.join('\n'))}</code></pre>`)
       continue
     }
-    // bullet list group
+    // bullet list group (- or *)
     if (/^\s*[-*]\s+/.test(lines[i])) {
       const items: string[] = []
       while (i < lines.length && /^\s*[-*]\s+/.test(lines[i])) {
@@ -194,11 +194,12 @@ function renderChatHtml(md: string): string {
       blocks.push(`<ul class="list-disc pl-5">${items.join('')}</ul>`)
       continue
     }
-    // numbered list group
-    if (/^\s*\d+[\.)]\s+/.test(lines[i])) {
+    // numbered list group (1.  1)  1、  1．) with optional leading bold **
+    const numPattern = /^\s*(?:\*\*|__)?\s*\d+[\.|\)|\u3001|\uFF0E]\s+/
+    if (numPattern.test(lines[i])) {
       const items: string[] = []
-      while (i < lines.length && /^\s*\d+[\.)]\s+/.test(lines[i])) {
-        const text = lines[i].replace(/^\s*\d+[\.)]\s+/, '')
+      while (i < lines.length && numPattern.test(lines[i])) {
+        const text = lines[i].replace(numPattern, '')
         items.push(`<li>${inline(text)}</li>`)
         i++
       }

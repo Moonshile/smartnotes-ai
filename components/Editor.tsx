@@ -26,7 +26,7 @@ const Editor = React.forwardRef<EditorApi, EditorProps>(function Editor({ value,
 
   const editor = useEditor({
     extensions: [
-      StarterKit.configure({ heading: { levels: [1, 2, 3] }, codeBlock: true }),
+      StarterKit.configure({ heading: { levels: [1, 2, 3] }, codeBlock: {} }),
       Link.configure({ openOnClick: false }),
       Placeholder.configure({ placeholder: 'Write your notes here…' }),
       // Collaboration on content is temporarily disabled to keep document stable.

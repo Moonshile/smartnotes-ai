@@ -4,6 +4,7 @@ type OutlineRequest = {
     title: string
     type?: 'article' | 'report' | 'essay' | 'blog'
     length?: 'short' | 'medium' | 'long'
+    contentHint?: string
 }
 
 type OutlineItem = {
@@ -25,7 +26,7 @@ type OutlineResponse = {
 
 export async function POST(req: Request): Promise<Response> {
     try {
-        const { title, type = 'article', length = 'medium' }: OutlineRequest = await req.json()
+        const { title, type = 'article', length = 'medium', contentHint }: OutlineRequest = await req.json()
 
         // 验证输入
         if (!title || typeof title !== 'string') {
@@ -45,7 +46,7 @@ export async function POST(req: Request): Promise<Response> {
         const apiKey = process.env.OPENAI_API_KEY
         if (!apiKey) {
             // 返回模拟数据
-            const mockData = generateMockOutline(title, type, length)
+            const mockData = generateMockOutline(title, type, length, contentHint)
             return Response.json({
                 success: true,
                 data: mockData
@@ -53,7 +54,7 @@ export async function POST(req: Request): Promise<Response> {
         }
 
         // 构建提示词
-        const prompt = buildOutlinePrompt(title, type, length)
+        const prompt = buildOutlinePrompt(title, type, length, contentHint)
 
         // 调用OpenAI API
         const response = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -67,7 +68,7 @@ export async function POST(req: Request): Promise<Response> {
                 messages: [
                     {
                         role: 'system',
-                        content: '你是一个专业的写作助手，擅长生成结构化的文章大纲和开头段落。'
+                        content: '你是一个专业的写作助手，擅长生成结构化的文章大纲和开头段落。请确保生成的大纲具有清晰的层次结构，包含主标题和子标题。'
                     },
                     {
                         role: 'user',
@@ -75,7 +76,7 @@ export async function POST(req: Request): Promise<Response> {
                     }
                 ],
                 temperature: 0.2,
-                max_tokens: 2000
+                max_tokens: 2500
             })
         })
 
@@ -103,11 +104,11 @@ export async function POST(req: Request): Promise<Response> {
     }
 }
 
-function buildOutlinePrompt(title: string, type: string, length: string): string {
+function buildOutlinePrompt(title: string, type: string, length: string, contentHint?: string): string {
     const lengthMap = {
-        short: '简短（3-4个主要章节）',
-        medium: '中等（5-6个主要章节）',
-        long: '详细（7-8个主要章节）'
+        short: '简短（3-4个主要章节，每个章节包含2-3个子章节）',
+        medium: '中等（5-6个主要章节，每个章节包含3-4个子章节）',
+        long: '详细（7-8个主要章节，每个章节包含4-5个子章节）'
     }
 
     const typeMap = {
@@ -117,13 +118,19 @@ function buildOutlinePrompt(title: string, type: string, length: string): string
         blog: '博客'
     }
 
-    return `请为标题"${title}"生成一篇${typeMap[type as keyof typeof typeMap]}的大纲和开头段落。
+    let prompt = `请为标题"${title}"生成一篇${typeMap[type as keyof typeof typeMap]}的大纲和开头段落。
 
 要求：
 1. 文章类型：${typeMap[type as keyof typeof typeMap]}
 2. 文章长度：${lengthMap[length as keyof typeof lengthMap]}
-3. 大纲结构：层次化，包含主标题和子标题
-4. 开头段落：200-300字，引人入胜
+3. 大纲结构：必须包含多级标题（主标题和子标题），层次清晰
+4. 开头段落：200-300字，引人入胜，与主题紧密相关`
+
+    if (contentHint) {
+        prompt += `\n5. 内容要求：${contentHint}`
+    }
+
+    prompt += `
 
 请以以下JSON格式返回：
 {
@@ -137,13 +144,26 @@ function buildOutlinePrompt(title: string, type: string, length: string): string
           "level": 2,
           "title": "子标题",
           "description": "子章节描述"
+        },
+        {
+          "level": 2,
+          "title": "另一个子标题",
+          "description": "另一个子章节描述"
         }
       ]
     }
   ],
   "introduction": "开头段落内容",
   "suggestions": ["写作建议1", "写作建议2", "写作建议3"]
-}`
+}
+
+注意：
+- 确保每个主标题都有2-4个子标题
+- 子标题要具体、有针对性
+- 描述要简洁明了，不超过50字
+- 开头段落要直接切入主题，不要包含"本文将"等套话`
+
+    return prompt
 }
 
 function parseOutlineResponse(content: string, title: string) {
@@ -243,57 +263,116 @@ function parseTextResponse(content: string, title: string) {
     }
 }
 
-function generateMockOutline(title: string, type: string, length: string) {
+function generateMockOutline(title: string, type: string, length: string, contentHint?: string) {
+    const baseOutline = [
+        {
+            level: 1,
+            title: '引言',
+            description: '介绍主题背景和重要性',
+            children: [
+                {
+                    level: 2,
+                    title: '问题提出',
+                    description: '阐述要解决的核心问题'
+                },
+                {
+                    level: 2,
+                    title: '研究意义',
+                    description: '说明研究的重要性和价值'
+                },
+                {
+                    level: 2,
+                    title: '研究方法',
+                    description: '概述采用的研究方法'
+                }
+            ]
+        },
+        {
+            level: 1,
+            title: '主体内容',
+            description: '详细阐述主要观点',
+            children: [
+                {
+                    level: 2,
+                    title: '核心观点一',
+                    description: '第一个主要观点的详细分析'
+                },
+                {
+                    level: 2,
+                    title: '核心观点二',
+                    description: '第二个主要观点的详细分析'
+                },
+                {
+                    level: 2,
+                    title: '核心观点三',
+                    description: '第三个主要观点的详细分析'
+                }
+            ]
+        },
+        {
+            level: 1,
+            title: '结论',
+            description: '总结全文并提出展望',
+            children: [
+                {
+                    level: 2,
+                    title: '主要发现',
+                    description: '总结主要研究成果'
+                },
+                {
+                    level: 2,
+                    title: '未来展望',
+                    description: '展望未来发展方向'
+                }
+            ]
+        }
+    ]
+
+    // 根据长度调整章节数量
+    if (length === 'short') {
+        baseOutline.splice(1, 1) // 移除一个主体章节
+    } else if (length === 'long') {
+        baseOutline.splice(1, 0, {
+            level: 1,
+            title: '理论基础',
+            description: '阐述相关理论基础',
+            children: [
+                {
+                    level: 2,
+                    title: '相关理论',
+                    description: '介绍相关理论框架'
+                },
+                {
+                    level: 2,
+                    title: '理论应用',
+                    description: '说明理论在实际中的应用'
+                }
+            ]
+        })
+    }
+
     return {
-        outline: [
-            {
-                level: 1,
-                title: '引言',
-                description: '介绍主题背景和重要性',
-                children: [
-                    {
-                        level: 2,
-                        title: '问题提出',
-                        description: '阐述要解决的核心问题'
-                    },
-                    {
-                        level: 2,
-                        title: '研究意义',
-                        description: '说明研究的重要性和价值'
-                    }
-                ]
-            },
-            {
-                level: 1,
-                title: '主体内容',
-                description: '详细阐述主要观点',
-                children: [
-                    {
-                        level: 2,
-                        title: '核心观点一',
-                        description: '第一个主要观点的详细分析'
-                    },
-                    {
-                        level: 2,
-                        title: '核心观点二',
-                        description: '第二个主要观点的详细分析'
-                    }
-                ]
-            },
-            {
-                level: 1,
-                title: '结论',
-                description: '总结全文并提出展望',
-                children: []
-            }
-        ],
-        introduction: `关于"${title}"这个话题，在当今社会具有重要的现实意义。随着时代的发展，我们需要深入思考这一问题的本质和影响。本文将从多个角度分析这一主题，希望能够为读者提供有价值的见解和思考。`,
+        outline: baseOutline,
+        introduction: generateIntroduction(title, contentHint),
         suggestions: [
             '确保每个章节都有明确的主题',
             '使用具体的事例来支撑观点',
-            '保持逻辑清晰，层次分明'
+            '保持逻辑清晰，层次分明',
+            '注意段落之间的过渡和连接'
         ]
     }
+}
+
+function generateIntroduction(title: string, contentHint?: string): string {
+    let intro = `关于"${title}"这个话题，在当今社会具有重要的现实意义。`
+    
+    if (contentHint) {
+        intro += `特别是${contentHint}，这为我们的研究提供了新的视角。`
+    }
+    
+    intro += `随着时代的发展，我们需要深入思考这一问题的本质和影响。本文将从多个角度分析这一主题，希望能够为读者提供有价值的见解和思考。`
+    
+    return intro
 }
 
 function generateDefaultOutline(title: string): OutlineItem[] {
@@ -302,19 +381,52 @@ function generateDefaultOutline(title: string): OutlineItem[] {
             level: 1,
             title: '引言',
             description: '介绍主题背景',
-            children: []
+            children: [
+                {
+                    level: 2,
+                    title: '背景介绍',
+                    description: '阐述问题背景'
+                },
+                {
+                    level: 2,
+                    title: '研究目的',
+                    description: '说明研究目的'
+                }
+            ]
         },
         {
             level: 1,
             title: '主体内容',
             description: '详细阐述主要观点',
-            children: []
+            children: [
+                {
+                    level: 2,
+                    title: '主要观点',
+                    description: '阐述核心观点'
+                },
+                {
+                    level: 2,
+                    title: '支撑论据',
+                    description: '提供支撑论据'
+                }
+            ]
         },
         {
             level: 1,
             title: '结论',
             description: '总结全文',
-            children: []
+            children: [
+                {
+                    level: 2,
+                    title: '总结',
+                    description: '总结主要观点'
+                },
+                {
+                    level: 2,
+                    title: '展望',
+                    description: '展望未来发展'
+                }
+            ]
         }
     ]
 }
@@ -327,6 +439,7 @@ function generateDefaultSuggestions(): string[] {
     return [
         '确保文章结构清晰',
         '使用具体事例支撑观点',
-        '保持逻辑连贯性'
+        '保持逻辑连贯性',
+        '注意语言表达的准确性'
     ]
 }

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 
 interface OutlineItem {
     level: number
@@ -18,15 +18,36 @@ interface OutlineResult {
 interface OutlineGeneratorProps {
     onInsert: (content: string) => void
     onClose: () => void
+    currentDocument?: string
 }
 
-export default function OutlineGenerator({ onInsert, onClose }: OutlineGeneratorProps) {
+export default function OutlineGenerator({ onInsert, onClose, currentDocument = '' }: OutlineGeneratorProps) {
     const [title, setTitle] = useState('')
+    const [contentHint, setContentHint] = useState('')
     const [type, setType] = useState<'article' | 'report' | 'essay' | 'blog'>('article')
     const [length, setLength] = useState<'short' | 'medium' | 'long'>('medium')
     const [loading, setLoading] = useState(false)
     const [result, setResult] = useState<OutlineResult | null>(null)
     const [error, setError] = useState<string | null>(null)
+
+    // 从当前文档中提取标题
+    useEffect(() => {
+        if (currentDocument && !title) {
+            const extractedTitle = extractTitleFromDocument(currentDocument)
+            if (extractedTitle) {
+                setTitle(extractedTitle)
+            }
+        }
+    }, [currentDocument, title])
+
+    // 自动推测文章类型和长度
+    useEffect(() => {
+        if (title) {
+            const { type: suggestedType, length: suggestedLength } = analyzeTitle(title, contentHint)
+            setType(suggestedType)
+            setLength(suggestedLength)
+        }
+    }, [title, contentHint])
 
     const handleGenerate = async () => {
         if (!title.trim()) {
@@ -43,7 +64,12 @@ export default function OutlineGenerator({ onInsert, onClose }: OutlineGenerator
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({ title: title.trim(), type, length }),
+                body: JSON.stringify({ 
+                    title: title.trim(), 
+                    type, 
+                    length,
+                    contentHint: contentHint.trim() || undefined
+                }),
             })
 
             const data = await response.json()
@@ -63,18 +89,9 @@ export default function OutlineGenerator({ onInsert, onClose }: OutlineGenerator
     const handleInsertOutline = () => {
         if (!result) return
 
-        const outlineHtml = generateOutlineHtml(result.outline)
-        const content = `
-      <h1>${title}</h1>
-      <div class="outline-section">
-        <h2>文章大纲</h2>
-        ${outlineHtml}
-      </div>
-      <div class="introduction-section">
-        <h2>开头段落</h2>
-        <p>${result.introduction}</p>
-      </div>
-    `
+        // 生成干净的大纲HTML，不包含"文章大纲"等标题
+        const outlineHtml = generateCleanOutlineHtml(result.outline)
+        const content = `${outlineHtml}\n\n<p>${result.introduction}</p>`
 
         onInsert(content)
         onClose()
@@ -83,26 +100,19 @@ export default function OutlineGenerator({ onInsert, onClose }: OutlineGenerator
     const handleInsertIntroduction = () => {
         if (!result) return
 
-        const content = `
-      <h1>${title}</h1>
-      <p>${result.introduction}</p>
-    `
-
+        const content = `<p>${result.introduction}</p>`
         onInsert(content)
         onClose()
     }
 
-    const generateOutlineHtml = (outline: OutlineItem[]): string => {
+    const generateCleanOutlineHtml = (outline: OutlineItem[]): string => {
         return outline.map(item => {
-            const childrenHtml = item.children ? generateOutlineHtml(item.children) : ''
-            return `
-        <div class="outline-item level-${item.level}">
-          <h${item.level + 1}>${item.title}</h${item.level + 1}>
-          ${item.description ? `<p class="outline-description">${item.description}</p>` : ''}
-          ${childrenHtml}
-        </div>
-      `
-        }).join('')
+            const childrenHtml = item.children && item.children.length > 0 
+                ? generateCleanOutlineHtml(item.children) 
+                : ''
+            
+            return `<h${item.level + 1}>${item.title}</h${item.level + 1}>${childrenHtml}`
+        }).join('\n')
     }
 
     return (
@@ -137,6 +147,22 @@ export default function OutlineGenerator({ onInsert, onClose }: OutlineGenerator
                                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                                     maxLength={200}
                                 />
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    内容提示 (可选)
+                                </label>
+                                <textarea
+                                    value={contentHint}
+                                    onChange={(e) => setContentHint(e.target.value)}
+                                    placeholder="请输入文章的关键内容、观点或要求..."
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 h-20 resize-none"
+                                    maxLength={500}
+                                />
+                                <p className="text-xs text-gray-500 mt-1">
+                                    提供内容提示可以帮助生成更精准的大纲
+                                </p>
                             </div>
 
                             <div className="grid grid-cols-2 gap-4">
@@ -273,7 +299,7 @@ function OutlineItemComponent({ item }: { item: OutlineItem }) {
                     )}
                 </div>
             </div>
-            {item.children && (
+            {item.children && item.children.length > 0 && (
                 <div className="mt-2 space-y-1">
                     {item.children.map((child, index) => (
                         <OutlineItemComponent key={index} item={child} />
@@ -282,4 +308,57 @@ function OutlineItemComponent({ item }: { item: OutlineItem }) {
             )}
         </div>
     )
+}
+
+// 从文档中提取标题
+function extractTitleFromDocument(doc: string): string | null {
+    // 尝试从HTML中提取第一个h1标题
+    const h1Match = doc.match(/<h1[^>]*>(.*?)<\/h1>/i)
+    if (h1Match) {
+        return h1Match[1].replace(/<[^>]*>/g, '').trim()
+    }
+
+    // 尝试从Markdown中提取第一个#标题
+    const markdownMatch = doc.match(/^#\s+(.+)$/m)
+    if (markdownMatch) {
+        return markdownMatch[1].trim()
+    }
+
+    // 尝试从纯文本中提取第一行作为标题
+    const lines = doc.split('\n').filter(line => line.trim())
+    if (lines.length > 0) {
+        const firstLine = lines[0].replace(/<[^>]*>/g, '').trim()
+        if (firstLine.length > 0 && firstLine.length < 100) {
+            return firstLine
+        }
+    }
+
+    return null
+}
+
+// 分析标题和内容提示，推测文章类型和长度
+function analyzeTitle(title: string, contentHint: string): { type: 'article' | 'report' | 'essay' | 'blog', length: 'short' | 'medium' | 'long' } {
+    const text = (title + ' ' + contentHint).toLowerCase()
+    
+    // 推测文章类型
+    let type: 'article' | 'report' | 'essay' | 'blog' = 'article'
+    
+    if (text.includes('报告') || text.includes('分析') || text.includes('调研') || text.includes('数据')) {
+        type = 'report'
+    } else if (text.includes('论文') || text.includes('研究') || text.includes('学术') || text.includes('理论')) {
+        type = 'essay'
+    } else if (text.includes('博客') || text.includes('分享') || text.includes('经验') || text.includes('心得')) {
+        type = 'blog'
+    }
+    
+    // 推测文章长度
+    let length: 'short' | 'medium' | 'long' = 'medium'
+    
+    if (text.includes('简单') || text.includes('简要') || text.includes('概述') || text.includes('简介')) {
+        length = 'short'
+    } else if (text.includes('详细') || text.includes('深入') || text.includes('全面') || text.includes('完整') || text.includes('深度')) {
+        length = 'long'
+    }
+    
+    return { type, length }
 }

@@ -134,6 +134,19 @@ export default function SmartTextProcessor({ selectedText, onProcess, onClose, d
 
     const generateSearchQuery = async () => {
         try {
+            // 构建搜索提示，包含原文和用户要求
+            let searchPrompt = `请从以下文本中提取3-5个关键词用于搜索相关资料，关键词应该是最能代表文本核心概念和主题的词汇：\n\n原文内容：\n${selectedText}\n\n`
+            
+            if (prompt) {
+                searchPrompt += `用户处理要求：${prompt}\n\n`
+            }
+            
+            if (documentContext) {
+                searchPrompt += `文档上下文：\n${documentContext.substring(0, 500)}...\n\n`
+            }
+            
+            searchPrompt += `请基于原文内容、用户要求和文档上下文，提取最相关的搜索关键词。`
+
             const response = await fetch('/api/ai', {
                 method: 'POST',
                 headers: {
@@ -142,7 +155,7 @@ export default function SmartTextProcessor({ selectedText, onProcess, onClose, d
                 body: JSON.stringify({
                     text: selectedText.trim(),
                     operation: 'extract',
-                    prompt: `请从以下文本中提取3-5个关键词用于搜索相关资料，关键词应该是最能代表文本核心概念和主题的词汇：\n\n${selectedText}\n\n${prompt ? `用户要求：${prompt}` : ''}`
+                    prompt: searchPrompt
                 }),
             })
 
@@ -358,7 +371,7 @@ export default function SmartTextProcessor({ selectedText, onProcess, onClose, d
                                                     <span className="font-medium">智能搜索</span>
                                                 </div>
                                                 <p className="text-xs text-blue-600">
-                                                    系统将根据选中文本和您的处理要求自动生成搜索关键词，无需手动输入
+                                                    系统将根据选中文本、您的处理要求和文档上下文自动生成搜索关键词，无需手动输入
                                                 </p>
                                             </div>
                                         </div>
@@ -488,16 +501,23 @@ export default function SmartTextProcessor({ selectedText, onProcess, onClose, d
                                                 <div className="text-sm font-medium mb-1">
                                                     {message.type === 'user' ? '您' : 'AI助手'}
                                                 </div>
-                                                <div className="text-sm">{message.content}</div>
-
-                                                {/* 用户提示展示 */}
-                                                {message.type === 'user' && message.userPrompt && (
-                                                    <div className="mt-2 pt-2 border-t border-blue-300">
-                                                        <div className="text-xs font-medium mb-1">您的优化建议：</div>
-                                                        <div className="text-xs bg-blue-400 bg-opacity-20 p-2 rounded">
-                                                            {message.userPrompt}
-                                                        </div>
+                                                
+                                                {/* 用户消息显示 */}
+                                                {message.type === 'user' ? (
+                                                    <div className="text-sm">
+                                                        {message.userPrompt ? (
+                                                            <div>
+                                                                <div className="text-xs font-medium mb-1">优化建议：</div>
+                                                                <div className="text-xs bg-blue-400 bg-opacity-20 p-2 rounded">
+                                                                    {message.userPrompt}
+                                                                </div>
+                                                            </div>
+                                                        ) : (
+                                                            message.content
+                                                        )}
                                                     </div>
+                                                ) : (
+                                                    <div className="text-sm">{message.content}</div>
                                                 )}
 
                                                 {message.result && (

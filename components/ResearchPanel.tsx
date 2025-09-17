@@ -81,16 +81,18 @@ export default function ResearchPanel({ selectedText, onInsert, onClose }: Resea
     const handleInsertSummary = () => {
         if (!result) return
 
-        const summary = result.results
-            .map(r => `• ${r.title}: ${r.summary}`)
-            .join('\n')
-
         const content = `
       <h3>相关资料总结</h3>
       <p>关于"${result.query}"的相关资料：</p>
-      <ul>
-        ${result.results.map(r => `<li><strong>${r.title}</strong>: ${r.summary}</li>`).join('')}
-      </ul>
+      <div class="research-summary">
+        ${result.results.map(r => `
+          <div class="research-item">
+            <h4>${r.title}</h4>
+            <p>${r.summary}</p>
+            <p class="research-source"><em>来源：${r.source} | 相关度：${Math.round(r.relevance * 100)}%</em></p>
+          </div>
+        `).join('')}
+      </div>
     `
 
         onInsert(content)

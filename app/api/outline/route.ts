@@ -5,6 +5,9 @@ type OutlineRequest = {
     type?: 'article' | 'report' | 'essay' | 'blog'
     length?: 'short' | 'medium' | 'long'
     contentHint?: string
+    iterationPrompt?: string
+    currentOutline?: OutlineItem[]
+    currentIntroduction?: string
 }
 
 type OutlineItem = {
@@ -26,7 +29,7 @@ type OutlineResponse = {
 
 export async function POST(req: Request): Promise<Response> {
     try {
-        const { title, type = 'article', length = 'medium', contentHint }: OutlineRequest = await req.json()
+        const { title, type = 'article', length = 'medium', contentHint, iterationPrompt, currentOutline, currentIntroduction }: OutlineRequest = await req.json()
 
         // 验证输入
         if (!title || typeof title !== 'string') {
@@ -46,7 +49,9 @@ export async function POST(req: Request): Promise<Response> {
         const apiKey = process.env.OPENAI_API_KEY
         if (!apiKey) {
             // 返回模拟数据
-            const mockData = generateMockOutline(title, type, length, contentHint)
+            const mockData = iterationPrompt && currentOutline
+                ? generateIterationMockOutline(title, type, length, contentHint, iterationPrompt, currentOutline, currentIntroduction)
+                : generateMockOutline(title, type, length, contentHint)
             return Response.json({
                 success: true,
                 data: mockData
@@ -54,7 +59,9 @@ export async function POST(req: Request): Promise<Response> {
         }
 
         // 构建提示词
-        const prompt = buildOutlinePrompt(title, type, length, contentHint)
+        const prompt = iterationPrompt && currentOutline
+            ? buildIterationPrompt(title, type, length, contentHint, iterationPrompt, currentOutline, currentIntroduction)
+            : buildOutlinePrompt(title, type, length, contentHint)
 
         // 调用OpenAI API
         const response = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -164,6 +171,77 @@ function buildOutlinePrompt(title: string, type: string, length: string, content
 - 描述文本要详细说明章节内容，不要过于简单
 - 开头段落要直接切入主题，不要包含"本文将"等套话
 - 描述文本要帮助读者理解每个章节的具体内容和价值`
+
+    return prompt
+}
+
+function buildIterationPrompt(title: string, type: string, length: string, contentHint: string | undefined, iterationPrompt: string, currentOutline: OutlineItem[], currentIntroduction: string | undefined): string {
+    const lengthMap = {
+        short: '简短（3-4个主要章节，每个章节包含2-3个子章节）',
+        medium: '中等（5-6个主要章节，每个章节包含3-4个子章节）',
+        long: '详细（7-8个主要章节，每个章节包含4-5个子章节）'
+    }
+
+    const typeMap = {
+        article: '文章',
+        report: '报告',
+        essay: '论文',
+        blog: '博客'
+    }
+
+    let prompt = `请根据用户反馈对现有大纲进行迭代优化。
+
+当前大纲信息：
+- 标题：${title}
+- 文章类型：${typeMap[type as keyof typeof typeMap]}
+- 文章长度：${lengthMap[length as keyof typeof lengthMap]}
+
+当前大纲结构：
+${JSON.stringify(currentOutline, null, 2)}
+
+当前开头段落：
+${currentIntroduction || '无'}
+
+用户反馈：${iterationPrompt}
+
+要求：
+1. 根据用户反馈对现有大纲进行改进
+2. 保持文章类型和长度的基本要求
+3. 在现有基础上进行调整，而不是完全重写
+4. 确保改进后的结构更加合理和完整
+5. 每个章节都要有详细、具体的描述文本（30-80字）`
+
+    if (contentHint) {
+        prompt += `\n6. 内容要求：${contentHint}`
+    }
+
+    prompt += `
+
+请以以下JSON格式返回改进后的大纲：
+{
+  "outline": [
+    {
+      "level": 1,
+      "title": "主标题",
+      "description": "详细描述该章节的核心内容、主要观点和论述重点，30-80字",
+      "children": [
+        {
+          "level": 2,
+          "title": "子标题",
+          "description": "具体描述该子章节要讨论的内容和角度，20-50字"
+        }
+      ]
+    }
+  ],
+  "introduction": "改进后的开头段落内容，200-300字",
+  "suggestions": ["改进建议1", "改进建议2", "改进建议3"]
+}
+
+注意：
+- 基于现有大纲进行改进，不要完全重写
+- 确保改进符合用户反馈的要求
+- 保持逻辑清晰和结构完整
+- 描述文本要详细说明章节内容`
 
     return prompt
 }
@@ -361,6 +439,29 @@ function generateMockOutline(title: string, type: string, length: string, conten
             '使用具体的事例来支撑观点',
             '保持逻辑清晰，层次分明',
             '注意段落之间的过渡和连接'
+        ]
+    }
+}
+
+function generateIterationMockOutline(title: string, type: string, length: string, contentHint: string | undefined, iterationPrompt: string, currentOutline: OutlineItem[], currentIntroduction: string | undefined) {
+    // 基于现有大纲进行改进
+    const improvedOutline = currentOutline.map(item => ({
+        ...item,
+        description: item.description + ' (已根据反馈优化)',
+        children: item.children?.map(child => ({
+            ...child,
+            description: child.description + ' (已改进)'
+        }))
+    }))
+
+    return {
+        outline: improvedOutline,
+        introduction: (currentIntroduction || '') + ' (已根据用户反馈进行优化)',
+        suggestions: [
+            '已根据反馈调整章节内容',
+            '优化了描述文本的详细程度',
+            '改进了整体结构的逻辑性',
+            '增强了内容的针对性和实用性'
         ]
     }
 }

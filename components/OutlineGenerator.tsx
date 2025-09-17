@@ -29,6 +29,8 @@ export default function OutlineGenerator({ onInsert, onClose, currentDocument = 
     const [loading, setLoading] = useState(false)
     const [result, setResult] = useState<OutlineResult | null>(null)
     const [error, setError] = useState<string | null>(null)
+    const [iterationPrompt, setIterationPrompt] = useState('')
+    const [isIterating, setIsIterating] = useState(false)
 
     // 从当前文档中提取标题
     useEffect(() => {
@@ -83,6 +85,47 @@ export default function OutlineGenerator({ onInsert, onClose, currentDocument = 
             setError('网络错误，请稍后再试')
         } finally {
             setLoading(false)
+        }
+    }
+
+    const handleIterate = async () => {
+        if (!result || !iterationPrompt.trim()) {
+            setError('请输入迭代提示')
+            return
+        }
+
+        setIsIterating(true)
+        setError(null)
+
+        try {
+            const response = await fetch('/api/outline', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    title: title.trim(),
+                    type,
+                    length,
+                    contentHint: contentHint.trim() || undefined,
+                    iterationPrompt: iterationPrompt.trim(),
+                    currentOutline: result.outline,
+                    currentIntroduction: result.introduction
+                }),
+            })
+
+            const data = await response.json()
+
+            if (data.success) {
+                setResult(data.data)
+                setIterationPrompt('')
+            } else {
+                setError(data.error || '迭代生成失败')
+            }
+        } catch (err) {
+            setError('网络错误，请稍后再试')
+        } finally {
+            setIsIterating(false)
         }
     }
 
@@ -278,6 +321,33 @@ export default function OutlineGenerator({ onInsert, onClose, currentDocument = 
                                     </ul>
                                 </div>
                             )}
+
+                            <div className="border-t pt-4">
+                                <h4 className="text-md font-semibold mb-3">迭代优化</h4>
+                                <div className="space-y-3">
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                                            迭代提示
+                                        </label>
+                                        <textarea
+                                            value={iterationPrompt}
+                                            onChange={(e) => setIterationPrompt(e.target.value)}
+                                            placeholder="请描述您希望如何改进大纲，例如：'增加更多技术细节'、'调整章节顺序'、'添加案例分析'等..."
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 h-20 resize-none"
+                                            maxLength={500}
+                                        />
+                                    </div>
+                                    <div className="flex justify-end">
+                                        <button
+                                            onClick={handleIterate}
+                                            disabled={isIterating || !iterationPrompt.trim()}
+                                            className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                                        >
+                                            {isIterating ? '迭代中...' : '迭代优化'}
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
 
                             <div className="flex justify-end space-x-3">
                                 <button

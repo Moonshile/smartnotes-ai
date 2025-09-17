@@ -5,6 +5,7 @@ type TextProcessRequest = {
     operation: 'optimize' | 'expand' | 'summarize' | 'rewrite' | 'continue'
     prompt?: string
     tone?: string
+    currentResult?: string
 }
 
 type TextProcessResponse = {
@@ -19,7 +20,7 @@ type TextProcessResponse = {
 
 export async function POST(req: Request): Promise<Response> {
     try {
-        const { text, operation, prompt, tone }: TextProcessRequest = await req.json()
+        const { text, operation, prompt, tone, currentResult }: TextProcessRequest = await req.json()
 
         // 验证输入
         if (!text || typeof text !== 'string') {
@@ -39,7 +40,9 @@ export async function POST(req: Request): Promise<Response> {
         const apiKey = process.env.OPENAI_API_KEY
         if (!apiKey) {
             // 返回模拟数据
-            const mockData = generateMockResult(text, operation, prompt, tone)
+            const mockData = currentResult 
+                ? generateIterationMockResult(text, operation, prompt, tone, currentResult)
+                : generateMockResult(text, operation, prompt, tone)
             return Response.json({
                 success: true,
                 data: mockData
@@ -48,7 +51,9 @@ export async function POST(req: Request): Promise<Response> {
 
         // 构建提示词
         const systemPrompt = buildSystemPrompt(operation)
-        const userPrompt = buildUserPrompt(text, operation, prompt, tone)
+        const userPrompt = currentResult 
+            ? buildIterationPrompt(text, operation, prompt, tone, currentResult)
+            : buildUserPrompt(text, operation, prompt, tone)
 
         // 调用OpenAI API
         const response = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -106,21 +111,21 @@ function buildSystemPrompt(operation: string): string {
         rewrite: '你是一个重写专家，擅长用不同的表达方式重新组织文本内容。请保持原文的意思，但用全新的语言和结构来表达。',
         continue: '你是一个续写专家，擅长基于现有内容进行自然的续写和补写。请保持与原文风格和逻辑的一致性，自然地扩展内容。'
     }
-    
+
     return prompts[operation as keyof typeof prompts] || prompts.optimize
 }
 
 function buildUserPrompt(text: string, operation: string, prompt?: string, tone?: string): string {
     let userPrompt = `请处理以下文本：\n\n${text}\n\n`
-    
+
     if (prompt) {
         userPrompt += `具体要求：${prompt}\n\n`
     }
-    
+
     if (tone) {
         userPrompt += `语言风格：${tone}\n\n`
     }
-    
+
     const operationInstructions = {
         optimize: '请优化这段文本，提升其表达效果、逻辑性和可读性。',
         expand: '请扩展这段文本，增加更多细节、例子和深入分析。',
@@ -128,25 +133,54 @@ function buildUserPrompt(text: string, operation: string, prompt?: string, tone?
         rewrite: '请重写这段文本，用不同的表达方式重新组织内容。',
         continue: '请基于这段文本进行续写，自然地扩展内容。'
     }
-    
+
     userPrompt += operationInstructions[operation as keyof typeof operationInstructions] || operationInstructions.optimize
-    
+
     userPrompt += '\n\n请直接返回处理后的文本，不要添加任何解释或说明。'
-    
+
+    return userPrompt
+}
+
+function buildIterationPrompt(text: string, operation: string, prompt: string | undefined, tone: string | undefined, currentResult: string): string {
+    let userPrompt = `请根据用户反馈对现有处理结果进行迭代优化。
+
+原始文本：
+${text}
+
+当前处理结果：
+${currentResult}
+
+用户反馈：${prompt || '请进一步优化'}`
+
+    if (tone) {
+        userPrompt += `\n语言风格：${tone}`
+    }
+
+    const operationInstructions = {
+        optimize: '请根据反馈进一步优化文本的表达效果、逻辑性和可读性。',
+        expand: '请根据反馈进一步扩展文本内容，增加更多细节和深度。',
+        summarize: '请根据反馈进一步优化摘要，确保核心要点更加突出。',
+        rewrite: '请根据反馈进一步重写文本，用更好的方式重新组织内容。',
+        continue: '请根据反馈进一步续写文本，自然地扩展和深化内容。'
+    }
+
+    userPrompt += '\n\n' + (operationInstructions[operation as keyof typeof operationInstructions] || operationInstructions.optimize)
+    userPrompt += '\n\n请直接返回改进后的文本，不要添加任何解释或说明。'
+
     return userPrompt
 }
 
 function parseTextProcessResponse(content: string, operation: string) {
     // 清理内容，移除可能的格式标记
     let processedText = content.trim()
-    
+
     // 移除常见的AI回复格式
     processedText = processedText.replace(/^(处理后的文本|优化后的文本|扩展后的文本|摘要|重写后的文本|续写内容)[:：]\s*/i, '')
     processedText = processedText.replace(/^(以下是|这是)[:：]\s*/i, '')
-    
+
     // 生成建议
     const suggestions = generateSuggestions(operation, processedText)
-    
+
     return {
         processedText,
         suggestions,
@@ -182,7 +216,7 @@ function generateSuggestions(operation: string, text: string): string[] {
             '考虑是否需要过渡句'
         ]
     }
-    
+
     return baseSuggestions[operation as keyof typeof baseSuggestions] || baseSuggestions.optimize
 }
 
@@ -194,10 +228,25 @@ function generateMockResult(text: string, operation: string, prompt?: string, to
         rewrite: `重新表达：${text}。从另一个角度来看，这个问题涉及多个层面的因素，需要我们综合考虑各种可能性。`,
         continue: `${text} 继续深入探讨，我们发现这一主题还有许多值得研究的方向。特别是在实际应用中，这些理论和方法都展现出了独特的价值和意义。`
     }
-    
+
     return {
         processedText: mockResults[operation as keyof typeof mockResults] || mockResults.optimize,
         suggestions: generateSuggestions(operation, text),
+        operation
+    }
+}
+
+function generateIterationMockResult(text: string, operation: string, prompt: string | undefined, tone: string | undefined, currentResult: string) {
+    const improvedResult = currentResult + ' (已根据反馈进一步优化)'
+    
+    return {
+        processedText: improvedResult,
+        suggestions: [
+            '已根据反馈调整内容',
+            '优化了表达方式',
+            '改进了整体效果',
+            '增强了针对性'
+        ],
         operation
     }
 }

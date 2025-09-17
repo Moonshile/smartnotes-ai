@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from 'react'
+import { parseMarkdownToHtml, containsMarkdown } from '@/utils/markdownParser'
 
 interface OutlineItem {
     level: number
@@ -188,7 +189,15 @@ export default function OutlineGenerator({ onInsert, onClose, currentDocument = 
         const targetResult = version || currentVersion
         if (!targetResult) return
 
-        const content = `<p>${targetResult.introduction}</p>`
+        let content = targetResult.introduction
+        
+        // 检查是否包含markdown语法，如果包含则解析为HTML
+        if (containsMarkdown(content)) {
+            content = parseMarkdownToHtml(content)
+        } else {
+            content = `<p>${content}</p>`
+        }
+        
         onInsert(content)
         onClose()
     }
@@ -210,8 +219,13 @@ export default function OutlineGenerator({ onInsert, onClose, currentDocument = 
     }
 
     const generateCompleteOutlineHtml = (outline: OutlineItem[], introduction: string): string => {
-        // 首先生成开头段落
-        const introHtml = `<p>${introduction}</p>`
+        // 首先生成开头段落，支持markdown解析
+        let introHtml = introduction
+        if (containsMarkdown(introduction)) {
+            introHtml = parseMarkdownToHtml(introduction)
+        } else {
+            introHtml = `<p>${introduction}</p>`
+        }
 
         // 然后生成大纲结构，包含描述文本
         const outlineHtml = outline.map(item => {
@@ -219,9 +233,15 @@ export default function OutlineGenerator({ onInsert, onClose, currentDocument = 
                 ? generateOutlineWithDescriptions(item.children)
                 : ''
 
-            const descriptionHtml = item.description
-                ? `<p class="outline-description">${item.description}</p>`
-                : ''
+            // 支持markdown解析描述文本
+            let descriptionHtml = ''
+            if (item.description) {
+                if (containsMarkdown(item.description)) {
+                    descriptionHtml = `<div class="outline-description">${parseMarkdownToHtml(item.description)}</div>`
+                } else {
+                    descriptionHtml = `<p class="outline-description">${item.description}</p>`
+                }
+            }
 
             return `<h${item.level + 1}>${item.title}</h${item.level + 1}>${descriptionHtml}${childrenHtml}`
         }).join('\n')
@@ -235,9 +255,15 @@ export default function OutlineGenerator({ onInsert, onClose, currentDocument = 
                 ? generateOutlineWithDescriptions(item.children)
                 : ''
 
-            const descriptionHtml = item.description
-                ? `<p class="outline-description">${item.description}</p>`
-                : ''
+            // 支持markdown解析描述文本
+            let descriptionHtml = ''
+            if (item.description) {
+                if (containsMarkdown(item.description)) {
+                    descriptionHtml = `<div class="outline-description">${parseMarkdownToHtml(item.description)}</div>`
+                } else {
+                    descriptionHtml = `<p class="outline-description">${item.description}</p>`
+                }
+            }
 
             return `<h${item.level + 1}>${item.title}</h${item.level + 1}>${descriptionHtml}${childrenHtml}`
         }).join('\n')

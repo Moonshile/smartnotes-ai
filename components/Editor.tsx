@@ -77,7 +77,7 @@ const Editor = React.forwardRef<EditorApi, EditorProps>(function Editor({ value,
                     editor?.chain().focus().undo().run()
                     return true
                 }
-                if (((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'y') || 
+                if (((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'y') ||
                     ((event.metaKey || event.ctrlKey) && event.shiftKey && event.key.toLowerCase() === 'z')) {
                     // Cmd/Ctrl + Y 或 Cmd/Ctrl + Shift + Z 重做
                     event.preventDefault()
@@ -290,12 +290,12 @@ const Editor = React.forwardRef<EditorApi, EditorProps>(function Editor({ value,
                         <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-1">
                             <ToolbarBtn onClick={() => editor?.chain().focus().undo().run()} disabled={!editor?.can().undo()}>
                                 <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                                    <path fillRule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clipRule="evenodd"/>
+                                    <path fillRule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clipRule="evenodd" />
                                 </svg>
                             </ToolbarBtn>
                             <ToolbarBtn onClick={() => editor?.chain().focus().redo().run()} disabled={!editor?.can().redo()}>
                                 <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                                    <path fillRule="evenodd" d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z" clipRule="evenodd"/>
+                                    <path fillRule="evenodd" d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z" clipRule="evenodd" />
                                 </svg>
                             </ToolbarBtn>
                             <div className="w-px h-6 bg-gray-300 mx-1"></div>
@@ -545,13 +545,12 @@ function ToolbarBtn({ onClick, active, disabled, children }: { onClick: () => vo
     return (
         <button
             type="button"
-            className={`p-2 rounded-md transition-all duration-200 flex items-center justify-center ${
-                disabled
+            className={`p-2 rounded-md transition-all duration-200 flex items-center justify-center ${disabled
                     ? 'text-gray-400 cursor-not-allowed'
                     : active
                         ? 'bg-blue-100 text-blue-700 shadow-sm'
                         : 'text-gray-600 hover:bg-gray-200 hover:text-gray-800'
-            }`}
+                }`}
             onClick={onClick}
             disabled={disabled}
         >

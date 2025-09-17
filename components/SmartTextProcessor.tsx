@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
+import { parseMarkdownToHtml, containsMarkdown } from '@/utils/markdownParser'
 
 interface TextProcessResult {
     processedText: string
@@ -114,7 +115,15 @@ export default function SmartTextProcessor({ selectedText, onProcess, onClose, d
     const handleInsert = (version?: TextProcessResult) => {
         const targetResult = version || currentVersion
         if (!targetResult) return
-        onProcess(targetResult.processedText)
+        
+        let processedText = targetResult.processedText
+        
+        // 检查是否包含markdown语法，如果包含则解析为HTML
+        if (containsMarkdown(processedText)) {
+            processedText = parseMarkdownToHtml(processedText)
+        }
+        
+        onProcess(processedText)
         onClose()
     }
 

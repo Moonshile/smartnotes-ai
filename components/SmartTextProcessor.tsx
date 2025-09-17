@@ -38,9 +38,9 @@ export default function SmartTextProcessor({ selectedText, onProcess, onClose, d
     const [expandedMessages, setExpandedMessages] = useState<Set<string>>(new Set())
     const [searchResults, setSearchResults] = useState<any[]>([])
     const [isSearching, setIsSearching] = useState(false)
-    const [searchQuery, setSearchQuery] = useState('')
     const [useContext, setUseContext] = useState(true)
     const [useSearch, setUseSearch] = useState(false)
+    const [autoSearchQuery, setAutoSearchQuery] = useState('')
 
     // 根据提示语和操作类型自动推测参数
     useEffect(() => {
@@ -63,6 +63,11 @@ export default function SmartTextProcessor({ selectedText, onProcess, onClose, d
         setError(null)
 
         try {
+            // 如果启用搜索，先自动搜索相关资料
+            if (useSearch) {
+                await handleAutoSearch()
+            }
+
             const response = await fetch('/api/text-process', {
                 method: 'POST',
                 headers: {
@@ -127,23 +132,46 @@ export default function SmartTextProcessor({ selectedText, onProcess, onClose, d
         })
     }
 
-    const handleSearch = async () => {
-        if (!searchQuery.trim()) {
-            setError('请输入搜索关键词')
-            return
-        }
+    const generateSearchQuery = async () => {
+        try {
+            const response = await fetch('/api/ai', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    text: selectedText.trim(),
+                    operation: 'extract',
+                    prompt: `请从以下文本中提取3-5个关键词用于搜索相关资料，关键词应该是最能代表文本核心概念和主题的词汇：\n\n${selectedText}\n\n${prompt ? `用户要求：${prompt}` : ''}`
+                }),
+            })
 
+            const data = await response.json()
+            if (data.success) {
+                return data.data.extractedText || selectedText.trim()
+            }
+        } catch (err) {
+            console.error('生成搜索关键词失败', err)
+        }
+        return selectedText.trim()
+    }
+
+    const handleAutoSearch = async () => {
         setIsSearching(true)
         setError(null)
 
         try {
+            // 自动生成搜索关键词
+            const searchQuery = await generateSearchQuery()
+            setAutoSearchQuery(searchQuery)
+
             const response = await fetch('/api/research', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
-                    query: searchQuery.trim(),
+                    query: searchQuery,
                     maxResults: 5
                 }),
             })
@@ -316,27 +344,32 @@ export default function SmartTextProcessor({ selectedText, onProcess, onClose, d
                                             onChange={(e) => setUseSearch(e.target.checked)}
                                             className="mr-2"
                                         />
-                                        <span className="text-sm text-gray-700">搜索相关资料</span>
+                                        <span className="text-sm text-gray-700">自动搜索相关资料</span>
                                     </label>
                                 </div>
                                 {useSearch && (
                                     <div className="space-y-3">
-                                        <div className="flex space-x-2">
-                                            <input
-                                                type="text"
-                                                value={searchQuery}
-                                                onChange={(e) => setSearchQuery(e.target.value)}
-                                                placeholder="输入搜索关键词..."
-                                                className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                            />
-                                            <button
-                                                onClick={handleSearch}
-                                                disabled={isSearching || !searchQuery.trim()}
-                                                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                                            >
-                                                {isSearching ? '搜索中...' : '搜索'}
-                                            </button>
+                                        <div className="bg-blue-50 border border-blue-200 rounded-md p-3">
+                                            <div className="text-sm text-blue-800">
+                                                <div className="flex items-center gap-2 mb-2">
+                                                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                                        <path fillRule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clipRule="evenodd"/>
+                                                    </svg>
+                                                    <span className="font-medium">智能搜索</span>
+                                                </div>
+                                                <p className="text-xs text-blue-600">
+                                                    系统将根据选中文本和您的处理要求自动生成搜索关键词，无需手动输入
+                                                </p>
+                                            </div>
                                         </div>
+                                        {autoSearchQuery && (
+                                            <div className="bg-gray-50 border border-gray-200 rounded-md p-3">
+                                                <div className="text-sm text-gray-700">
+                                                    <span className="font-medium">搜索关键词：</span>
+                                                    <span className="text-gray-600">{autoSearchQuery}</span>
+                                                </div>
+                                            </div>
+                                        )}
                                         {searchResults.length > 0 && (
                                             <div className="bg-green-50 border border-green-200 rounded-md p-3">
                                                 <div className="text-sm font-medium text-green-800 mb-2">
@@ -559,7 +592,7 @@ export default function SmartTextProcessor({ selectedText, onProcess, onClose, d
                             {/* 迭代输入区域 */}
                             <div className="border-t pt-4">
                                 <h4 className="text-md font-semibold mb-3">继续优化</h4>
-                                
+
                                 {/* 显示当前设置状态 */}
                                 <div className="mb-4 p-3 bg-blue-50 rounded-md">
                                     <div className="text-sm text-blue-800">
@@ -570,12 +603,12 @@ export default function SmartTextProcessor({ selectedText, onProcess, onClose, d
                                             </span>
                                             <span className={`flex items-center gap-1 ${useSearch ? 'text-green-600' : 'text-gray-500'}`}>
                                                 <div className={`w-2 h-2 rounded-full ${useSearch ? 'bg-green-500' : 'bg-gray-400'}`}></div>
-                                                {useSearch ? `使用搜索资料 (${searchResults.length}条)` : '未使用搜索资料'}
+                                                {useSearch ? `智能搜索资料 (${searchResults.length}条)` : '未使用搜索资料'}
                                             </span>
                                         </div>
                                     </div>
                                 </div>
-                                
+
                                 <div className="space-y-3">
                                     <div>
                                         <label className="block text-sm font-medium text-gray-700 mb-2">

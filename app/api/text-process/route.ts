@@ -208,11 +208,11 @@ function parseTextProcessResponse(content: string, operation: string) {
 
     // 移除HTML标签
     processedText = processedText.replace(/<[^>]*>/g, '')
-    
+
     // 移除常见的AI回复格式
     processedText = processedText.replace(/^(处理后的文本|优化后的文本|扩展后的文本|摘要|重写后的文本|续写内容)[:：]\s*/i, '')
     processedText = processedText.replace(/^(以下是|这是)[:：]\s*/i, '')
-    
+
     // 清理多余的空白字符
     processedText = processedText.replace(/\n\s*\n/g, '\n').trim()
 

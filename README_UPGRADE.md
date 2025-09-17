@@ -61,7 +61,20 @@
    WIKIPEDIA_API_URL=https://en.wikipedia.org/api/rest_v1
    ```
 
-2. **部署命令**:
+2. **自动部署**:
+
+   ```bash
+   # 推送到main分支会自动触发Vercel构建和部署
+   git add .
+   git commit -m "feat: 新功能描述"
+   git push origin main
+   
+   # Vercel会自动检测到推送并开始构建部署
+   # 无需手动操作，等待几分钟即可看到部署结果
+   # 部署完成后会收到邮件通知
+   ```
+
+3. **手动部署**:
 
    ```bash
    npm install

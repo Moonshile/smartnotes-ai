@@ -359,37 +359,38 @@ async function searchSource(source: string, text: string, maxResults: number) {
 
 ## 部署步骤
 
-### 1. 准备项目
+### 1. 自动部署（推荐）
+
+项目已配置GitHub集成，每次推送到main分支会自动触发Vercel构建和部署：
 
 ```bash
-# 确保项目结构正确
-smartnotes-ai/
-├── app/
-│   ├── api/
-│   │   ├── outline/
-│   │   ├── optimize/
-│   │   └── research/
-│   └── ...
-├── components/
-├── docs/
-└── vercel.json
+# 提交更改
+git add .
+git commit -m "feat: 新功能描述"
+git push origin main
+
+# Vercel会自动检测到推送并开始构建部署
+# 无需手动操作，等待几分钟即可看到部署结果
+# 部署完成后会收到邮件通知
 ```
 
-### 2. 安装Vercel CLI
+**优势：**
+- 零配置，推送即部署
+- 自动构建和测试
+- 支持预览环境
+- 自动HTTPS和CDN
+
+### 2. 手动部署
+
+如果需要手动部署，可以使用Vercel CLI：
 
 ```bash
+# 安装Vercel CLI
 npm install -g vercel
-```
 
-### 3. 登录Vercel
-
-```bash
+# 登录Vercel
 vercel login
-```
 
-### 4. 部署项目
-
-```bash
 # 开发环境部署
 vercel
 
@@ -397,13 +398,29 @@ vercel
 vercel --prod
 ```
 
-### 5. 设置环境变量
+### 3. 项目结构
+
+```bash
+# 确保项目结构正确
+smartnotes-ai/
+├── app/
+│   ├── api/
+│   │   ├── outline/
+│   │   ├── text-process/
+│   │   └── research/
+│   └── ...
+├── components/
+├── docs/
+└── vercel.json
+```
+
+### 4. 环境变量设置
 
 在Vercel Dashboard中设置以下环境变量：
 
-- `OPENAI_API_KEY`
-- `BING_SEARCH_API_KEY`
-- `WIKIPEDIA_API_URL`
+- `OPENAI_API_KEY` - OpenAI API密钥
+- `BING_SEARCH_API_KEY` - Bing搜索API密钥（可选）
+- `WIKIPEDIA_API_URL` - Wikipedia API地址
 
 ## 性能优化
 

@@ -40,7 +40,7 @@ export async function POST(req: Request): Promise<Response> {
         const apiKey = process.env.OPENAI_API_KEY
         if (!apiKey) {
             // 返回模拟数据
-            const mockData = currentResult 
+            const mockData = currentResult
                 ? generateIterationMockResult(text, operation, prompt, tone, currentResult)
                 : generateMockResult(text, operation, prompt, tone)
             return Response.json({
@@ -51,7 +51,7 @@ export async function POST(req: Request): Promise<Response> {
 
         // 构建提示词
         const systemPrompt = buildSystemPrompt(operation)
-        const userPrompt = currentResult 
+        const userPrompt = currentResult
             ? buildIterationPrompt(text, operation, prompt, tone, currentResult)
             : buildUserPrompt(text, operation, prompt, tone)
 
@@ -238,7 +238,7 @@ function generateMockResult(text: string, operation: string, prompt?: string, to
 
 function generateIterationMockResult(text: string, operation: string, prompt: string | undefined, tone: string | undefined, currentResult: string) {
     const improvedResult = currentResult + ' (已根据反馈进一步优化)'
-    
+
     return {
         processedText: improvedResult,
         suggestions: [

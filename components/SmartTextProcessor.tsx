@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
+import remarkBreaks from 'remark-breaks'
 import { parseMarkdownToHtml, containsMarkdown } from '@/utils/markdownParser'
 
 interface TextProcessResult {
@@ -535,7 +536,7 @@ export default function SmartTextProcessor({ selectedText, onProcess, onClose, d
                                                     <div className="mt-2 pt-2 border-t border-gray-200">
                                                         <div className="text-xs text-gray-500 mb-2">处理结果预览：</div>
                                                         <div className="text-xs text-gray-600 max-h-20 overflow-y-auto prose prose-sm max-w-none">
-                                                            <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                                            <ReactMarkdown remarkPlugins={[remarkGfm, remarkBreaks]}>
                                                                 {message.result.processedText.substring(0, 100) + (message.result.processedText.length > 100 ? '...' : '')}
                                                             </ReactMarkdown>
                                                         </div>
@@ -556,7 +557,7 @@ export default function SmartTextProcessor({ selectedText, onProcess, onClose, d
                                                                 <div className="mb-2">
                                                                     <div className="font-medium mb-1">完整处理结果：</div>
                                                                     <div className="text-gray-600 max-h-40 overflow-y-auto prose prose-sm max-w-none">
-                                                                        <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                                                        <ReactMarkdown remarkPlugins={[remarkGfm, remarkBreaks]}>
                                                                             {message.result.processedText}
                                                                         </ReactMarkdown>
                                                                     </div>
@@ -606,7 +607,7 @@ export default function SmartTextProcessor({ selectedText, onProcess, onClose, d
                                     <h3 className="text-lg font-semibold mb-3">当前版本预览</h3>
                                     <div className="bg-gray-50 p-4 rounded-md">
                                         <div className="text-gray-700 leading-relaxed prose prose-sm max-w-none">
-                                            <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                            <ReactMarkdown remarkPlugins={[remarkGfm, remarkBreaks]}>
                                                 {currentVersion.processedText}
                                             </ReactMarkdown>
                                         </div>

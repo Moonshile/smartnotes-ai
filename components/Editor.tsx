@@ -41,8 +41,8 @@ const Editor = React.forwardRef<EditorApi, EditorProps>(function Editor({ value,
 
     const editor = useEditor({
         extensions: [
-            StarterKit.configure({ 
-                heading: { levels: [1, 2, 3] }, 
+            StarterKit.configure({
+                heading: { levels: [1, 2, 3] },
                 codeBlock: {},
             }),
             Link.configure({ openOnClick: false }),
@@ -69,8 +69,21 @@ const Editor = React.forwardRef<EditorApi, EditorProps>(function Editor({ value,
                     doSave()
                     return true
                 }
-                
+
                 // 处理快捷键
+                if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'z' && !event.shiftKey) {
+                    // Cmd/Ctrl + Z 撤销
+                    event.preventDefault()
+                    editor?.chain().focus().undo().run()
+                    return true
+                }
+                if (((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'y') || 
+                    ((event.metaKey || event.ctrlKey) && event.shiftKey && event.key.toLowerCase() === 'z')) {
+                    // Cmd/Ctrl + Y 或 Cmd/Ctrl + Shift + Z 重做
+                    event.preventDefault()
+                    editor?.chain().focus().redo().run()
+                    return true
+                }
                 if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'b') {
                     // Cmd/Ctrl + B 加粗
                     event.preventDefault()
@@ -275,6 +288,17 @@ const Editor = React.forwardRef<EditorApi, EditorProps>(function Editor({ value,
                     {/* 第一行：文本格式工具 */}
                     <div className="flex items-center gap-1 mb-3">
                         <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-1">
+                            <ToolbarBtn onClick={() => editor?.chain().focus().undo().run()} disabled={!editor?.can().undo()}>
+                                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fillRule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clipRule="evenodd"/>
+                                </svg>
+                            </ToolbarBtn>
+                            <ToolbarBtn onClick={() => editor?.chain().focus().redo().run()} disabled={!editor?.can().redo()}>
+                                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fillRule="evenodd" d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z" clipRule="evenodd"/>
+                                </svg>
+                            </ToolbarBtn>
+                            <div className="w-px h-6 bg-gray-300 mx-1"></div>
                             <ToolbarBtn onClick={() => editor?.chain().focus().toggleBold().run()} active={editor?.isActive('bold')}>
                                 <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                                     <path d="M5 4a1 1 0 011-1h5.5a2.5 2.5 0 011.5 4.5A2.5 2.5 0 0111.5 12H6a1 1 0 01-1-1V4zM6 3a2 2 0 00-2 2v6a2 2 0 002 2h5.5a3.5 3.5 0 100-7H6z" />
@@ -310,7 +334,7 @@ const Editor = React.forwardRef<EditorApi, EditorProps>(function Editor({ value,
 
                         {/* 快捷提示 */}
                         <div className="hidden lg:block text-xs text-gray-500 bg-gray-50 px-3 py-1.5 rounded-full">
-                            💡 使用 Cmd/Ctrl+B 加粗，Cmd/Ctrl+I 斜体，或 /summarize, /rewrite, /extract 命令
+                            💡 Cmd/Ctrl+Z 撤销，Cmd/Ctrl+Y 重做，Cmd/Ctrl+B 加粗，Cmd/Ctrl+I 斜体
                         </div>
                     </div>
 
@@ -517,15 +541,19 @@ const Editor = React.forwardRef<EditorApi, EditorProps>(function Editor({ value,
     )
 })
 
-function ToolbarBtn({ onClick, active, children }: { onClick: () => void; active?: boolean; children: React.ReactNode }) {
+function ToolbarBtn({ onClick, active, disabled, children }: { onClick: () => void; active?: boolean; disabled?: boolean; children: React.ReactNode }) {
     return (
         <button
             type="button"
-            className={`p-2 rounded-md transition-all duration-200 flex items-center justify-center ${active
-                    ? 'bg-blue-100 text-blue-700 shadow-sm'
-                    : 'text-gray-600 hover:bg-gray-200 hover:text-gray-800'
-                }`}
+            className={`p-2 rounded-md transition-all duration-200 flex items-center justify-center ${
+                disabled
+                    ? 'text-gray-400 cursor-not-allowed'
+                    : active
+                        ? 'bg-blue-100 text-blue-700 shadow-sm'
+                        : 'text-gray-600 hover:bg-gray-200 hover:text-gray-800'
+            }`}
             onClick={onClick}
+            disabled={disabled}
         >
             {children}
         </button>

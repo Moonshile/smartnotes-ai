@@ -2,6 +2,22 @@
 
 ## 版本历史
 
+### v0.2.9 - 修复大纲生成后placeholder文本残留问题 (2025-09-17)
+
+#### 🐛 问题修复
+
+- **Placeholder残留问题**: 修复大纲生成后原始placeholder文本（"My First Note"、"Start writing..."）残留的问题
+- **内容替换逻辑**: 修改大纲生成器使用setContent替换整个文档内容，而不是追加
+- **初始状态优化**: 移除页面初始的placeholder文本，编辑器空内容时显示placeholder提示
+- **用户体验提升**: 确保大纲生成后不会残留原始placeholder文本，避免内容混乱
+
+#### 🔧 技术实现
+
+- 修改Editor组件中大纲生成器的onInsert逻辑，使用`setContent`替代`insertContent`
+- 移除app/page.tsx中的初始placeholder内容
+- 优化编辑器空内容时的显示逻辑
+- 保持智能文本处理器的选中文本替换逻辑不变
+
 ### v0.2.8 - 修复大纲生成标题删除问题 (2025-09-17)
 
 #### 🐛 问题修复

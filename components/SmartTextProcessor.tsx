@@ -1,0 +1,291 @@
+"use client"
+
+import { useState, useEffect } from 'react'
+
+interface TextProcessResult {
+    processedText: string
+    suggestions: string[]
+    operation: string
+}
+
+interface SmartTextProcessorProps {
+    selectedText: string
+    onProcess: (processedText: string) => void
+    onClose: () => void
+}
+
+export default function SmartTextProcessor({ selectedText, onProcess, onClose }: SmartTextProcessorProps) {
+    const [prompt, setPrompt] = useState('')
+    const [operation, setOperation] = useState<'optimize' | 'expand' | 'summarize' | 'rewrite' | 'continue'>('optimize')
+    const [tone, setTone] = useState('')
+    const [loading, setLoading] = useState(false)
+    const [result, setResult] = useState<TextProcessResult | null>(null)
+    const [error, setError] = useState<string | null>(null)
+
+    // 根据提示语和操作类型自动推测参数
+    useEffect(() => {
+        if (prompt || operation) {
+            const { suggestedTone, suggestedOperation } = analyzePromptAndText(prompt, selectedText, operation)
+            setTone(suggestedTone)
+            if (suggestedOperation !== operation && ['optimize', 'expand', 'summarize', 'rewrite', 'continue'].includes(suggestedOperation)) {
+                setOperation(suggestedOperation as 'optimize' | 'expand' | 'summarize' | 'rewrite' | 'continue')
+            }
+        }
+    }, [prompt, selectedText, operation])
+
+    const handleProcess = async () => {
+        if (!selectedText.trim()) {
+            setError('请先选择要处理的文本')
+            return
+        }
+
+        setLoading(true)
+        setError(null)
+
+        try {
+            const response = await fetch('/api/text-process', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    text: selectedText.trim(),
+                    operation,
+                    prompt: prompt.trim() || undefined,
+                    tone: tone.trim() || undefined
+                }),
+            })
+
+            const data = await response.json()
+
+            if (data.success) {
+                setResult(data.data)
+            } else {
+                setError(data.error || '文本处理失败')
+            }
+        } catch (err) {
+            setError('网络错误，请稍后再试')
+        } finally {
+            setLoading(false)
+        }
+    }
+
+    const handleInsert = () => {
+        if (!result) return
+        onProcess(result.processedText)
+        onClose()
+    }
+
+    const getOperationLabel = (op: string) => {
+        const labels = {
+            optimize: '优化润色',
+            expand: '内容扩展',
+            summarize: '摘要简化',
+            rewrite: '重写改写',
+            continue: '续写补写'
+        }
+        return labels[op as keyof typeof labels] || op
+    }
+
+    const getOperationDescription = (op: string) => {
+        const descriptions = {
+            optimize: '优化文本表达，提升可读性和逻辑性',
+            expand: '在原文基础上扩展内容，增加细节和深度',
+            summarize: '提取核心要点，生成简洁摘要',
+            rewrite: '保持原意的基础上重新组织表达方式',
+            continue: '基于原文内容进行续写和补写'
+        }
+        return descriptions[op as keyof typeof descriptions] || ''
+    }
+
+    return (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full mx-4 max-h-[90vh] overflow-hidden">
+                <div className="p-6 border-b">
+                    <div className="flex items-center justify-between">
+                        <h2 className="text-xl font-semibold">智能文本处理</h2>
+                        <button
+                            onClick={onClose}
+                            className="text-gray-400 hover:text-gray-600"
+                        >
+                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+
+                <div className="p-6 overflow-y-auto max-h-[calc(90vh-120px)]">
+                    {!result ? (
+                        <div className="space-y-6">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    选中文本
+                                </label>
+                                <div className="bg-gray-50 p-3 rounded-md max-h-32 overflow-y-auto">
+                                    <p className="text-sm text-gray-700">{selectedText}</p>
+                                </div>
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    处理方式
+                                </label>
+                                <div className="grid grid-cols-2 gap-3">
+                                    {(['optimize', 'expand', 'summarize', 'rewrite', 'continue'] as const).map((op) => (
+                                        <button
+                                            key={op}
+                                            type="button"
+                                            onClick={() => setOperation(op)}
+                                            className={`p-3 text-left rounded-md border-2 transition-colors ${
+                                                operation === op
+                                                    ? 'border-blue-500 bg-blue-50 text-blue-700'
+                                                    : 'border-gray-200 hover:border-gray-300'
+                                            }`}
+                                        >
+                                            <div className="font-medium">{getOperationLabel(op)}</div>
+                                            <div className="text-xs text-gray-500 mt-1">{getOperationDescription(op)}</div>
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    处理提示 (可选)
+                                </label>
+                                <textarea
+                                    value={prompt}
+                                    onChange={(e) => setPrompt(e.target.value)}
+                                    placeholder="请描述您希望如何处理这段文本，例如：'让语言更正式'、'增加具体例子'、'简化表达'等..."
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 h-20 resize-none"
+                                    maxLength={500}
+                                />
+                                <p className="text-xs text-gray-500 mt-1">
+                                    提供具体提示可以帮助AI更好地理解您的需求
+                                </p>
+                            </div>
+
+                            {tone && (
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                        语言风格
+                                    </label>
+                                    <input
+                                        type="text"
+                                        value={tone}
+                                        onChange={(e) => setTone(e.target.value)}
+                                        placeholder="例如：正式、友好、简洁、学术等"
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    />
+                                </div>
+                            )}
+
+                            {error && (
+                                <div className="bg-red-50 border border-red-200 rounded-md p-3">
+                                    <p className="text-red-600 text-sm">{error}</p>
+                                </div>
+                            )}
+
+                            <div className="flex justify-end space-x-3">
+                                <button
+                                    onClick={onClose}
+                                    className="px-4 py-2 text-gray-600 border border-gray-300 rounded-md hover:bg-gray-50"
+                                >
+                                    取消
+                                </button>
+                                <button
+                                    onClick={handleProcess}
+                                    disabled={loading || !selectedText.trim()}
+                                    className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                    {loading ? '处理中...' : `开始${getOperationLabel(operation)}`}
+                                </button>
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="space-y-6">
+                            <div className="bg-green-50 border border-green-200 rounded-md p-4">
+                                <h3 className="text-lg font-medium text-green-800 mb-2">处理完成！</h3>
+                                <p className="text-green-700">已成功{getOperationLabel(result.operation)}选中文本</p>
+                            </div>
+
+                            <div>
+                                <h3 className="text-lg font-semibold mb-3">处理结果</h3>
+                                <div className="bg-gray-50 p-4 rounded-md">
+                                    <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">{result.processedText}</p>
+                                </div>
+                            </div>
+
+                            {result.suggestions.length > 0 && (
+                                <div>
+                                    <h3 className="text-lg font-semibold mb-3">改进建议</h3>
+                                    <ul className="space-y-1">
+                                        {result.suggestions.map((suggestion, index) => (
+                                            <li key={index} className="flex items-start">
+                                                <span className="text-blue-500 mr-2">•</span>
+                                                <span className="text-gray-700">{suggestion}</span>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                </div>
+                            )}
+
+                            <div className="flex justify-end space-x-3">
+                                <button
+                                    onClick={() => setResult(null)}
+                                    className="px-4 py-2 text-gray-600 border border-gray-300 rounded-md hover:bg-gray-50"
+                                >
+                                    重新处理
+                                </button>
+                                <button
+                                    onClick={handleInsert}
+                                    className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                                >
+                                    插入结果
+                                </button>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            </div>
+        </div>
+    )
+}
+
+// 分析提示语和文本，推测处理参数
+function analyzePromptAndText(prompt: string, text: string, currentOperation: string) {
+    const combinedText = (prompt + ' ' + text).toLowerCase()
+    
+    // 推测操作类型
+    let suggestedOperation = currentOperation
+    
+    if (prompt.includes('扩展') || prompt.includes('增加') || prompt.includes('补充') || prompt.includes('详细')) {
+        suggestedOperation = 'expand'
+    } else if (prompt.includes('摘要') || prompt.includes('总结') || prompt.includes('简化') || prompt.includes('概括')) {
+        suggestedOperation = 'summarize'
+    } else if (prompt.includes('重写') || prompt.includes('改写') || prompt.includes('重新组织')) {
+        suggestedOperation = 'rewrite'
+    } else if (prompt.includes('续写') || prompt.includes('补写') || prompt.includes('继续') || prompt.includes('接着')) {
+        suggestedOperation = 'continue'
+    } else if (prompt.includes('优化') || prompt.includes('润色') || prompt.includes('改进')) {
+        suggestedOperation = 'optimize'
+    }
+    
+    // 推测语言风格
+    let suggestedTone = ''
+    
+    if (combinedText.includes('正式') || combinedText.includes('学术') || combinedText.includes('专业')) {
+        suggestedTone = '正式'
+    } else if (combinedText.includes('友好') || combinedText.includes('亲切') || combinedText.includes('轻松')) {
+        suggestedTone = '友好'
+    } else if (combinedText.includes('简洁') || combinedText.includes('简短') || combinedText.includes('精炼')) {
+        suggestedTone = '简洁'
+    } else if (combinedText.includes('详细') || combinedText.includes('深入') || combinedText.includes('全面')) {
+        suggestedTone = '详细'
+    } else if (combinedText.includes('幽默') || combinedText.includes('风趣') || combinedText.includes('活泼')) {
+        suggestedTone = '幽默'
+    }
+    
+    return { suggestedTone, suggestedOperation }
+}

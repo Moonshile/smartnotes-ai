@@ -106,33 +106,33 @@ export default function OutlineGenerator({ onInsert, onClose, currentDocument = 
     const generateCompleteOutlineHtml = (outline: OutlineItem[], introduction: string): string => {
         // 首先生成开头段落
         const introHtml = `<p>${introduction}</p>`
-        
+
         // 然后生成大纲结构，包含描述文本
         const outlineHtml = outline.map(item => {
-            const childrenHtml = item.children && item.children.length > 0 
-                ? generateOutlineWithDescriptions(item.children) 
+            const childrenHtml = item.children && item.children.length > 0
+                ? generateOutlineWithDescriptions(item.children)
                 : ''
-            
-            const descriptionHtml = item.description 
-                ? `<p class="outline-description">${item.description}</p>` 
+
+            const descriptionHtml = item.description
+                ? `<p class="outline-description">${item.description}</p>`
                 : ''
-            
+
             return `<h${item.level + 1}>${item.title}</h${item.level + 1}>${descriptionHtml}${childrenHtml}`
         }).join('\n')
-        
+
         return `${introHtml}\n\n${outlineHtml}`
     }
 
     const generateOutlineWithDescriptions = (outline: OutlineItem[]): string => {
         return outline.map(item => {
-            const childrenHtml = item.children && item.children.length > 0 
-                ? generateOutlineWithDescriptions(item.children) 
+            const childrenHtml = item.children && item.children.length > 0
+                ? generateOutlineWithDescriptions(item.children)
                 : ''
-            
-            const descriptionHtml = item.description 
-                ? `<p class="outline-description">${item.description}</p>` 
+
+            const descriptionHtml = item.description
+                ? `<p class="outline-description">${item.description}</p>`
                 : ''
-            
+
             return `<h${item.level + 1}>${item.title}</h${item.level + 1}>${descriptionHtml}${childrenHtml}`
         }).join('\n')
     }

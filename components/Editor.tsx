@@ -5,7 +5,7 @@ import StarterKit from '@tiptap/starter-kit'
 import Link from '@tiptap/extension-link'
 import Placeholder from '@tiptap/extension-placeholder'
 import OutlineGenerator from './OutlineGenerator'
-import TextOptimizer from './TextOptimizer'
+import SmartTextProcessor from './SmartTextProcessor'
 import ResearchPanel from './ResearchPanel'
 import SmartInserter from './SmartInserter'
 
@@ -29,7 +29,7 @@ const Editor = React.forwardRef<EditorApi, EditorProps>(function Editor({ value,
 
     // 新功能状态
     const [showOutlineGenerator, setShowOutlineGenerator] = useState(false)
-    const [showTextOptimizer, setShowTextOptimizer] = useState(false)
+    const [showSmartTextProcessor, setShowSmartTextProcessor] = useState(false)
     const [showResearchPanel, setShowResearchPanel] = useState(false)
     const [showSmartInserter, setShowSmartInserter] = useState(false)
     const [selectedText, setSelectedText] = useState('')
@@ -287,21 +287,21 @@ const Editor = React.forwardRef<EditorApi, EditorProps>(function Editor({ value,
                         大纲生成
                     </button>
 
-                    <button
-                        type="button"
-                        title="优化选中文本"
-                        className="ml-2 px-3 py-1.5 rounded-md bg-purple-600 text-white shadow-sm hover:bg-purple-700"
-                        onClick={() => {
-                            if (!editor) return
-                            const sel = editor.state.selection
-                            if (sel.empty) { alert('请先选择要优化的文本'); return }
-                            const raw = editor.state.doc.textBetween(sel.from, sel.to, '\n')
-                            setSelectedText(raw)
-                            setShowTextOptimizer(true)
-                        }}
-                    >
-                        文本优化
-                    </button>
+          <button
+            type="button"
+            title="智能文本处理"
+            className="ml-2 px-3 py-1.5 rounded-md bg-purple-600 text-white shadow-sm hover:bg-purple-700"
+            onClick={() => {
+              if (!editor) return
+              const sel = editor.state.selection
+              if (sel.empty) { alert('请先选择要处理的文本'); return }
+              const raw = editor.state.doc.textBetween(sel.from, sel.to, '\n')
+              setSelectedText(raw)
+              setShowSmartTextProcessor(true)
+            }}
+          >
+            智能处理
+          </button>
 
                     <button
                         type="button"
@@ -364,21 +364,21 @@ const Editor = React.forwardRef<EditorApi, EditorProps>(function Editor({ value,
                 />
             )}
 
-            {showTextOptimizer && (
-                <TextOptimizer
+            {showSmartTextProcessor && (
+                <SmartTextProcessor
                     selectedText={selectedText}
-                    onOptimize={(optimizedText) => {
+                    onProcess={(processedText) => {
                         if (editor) {
                             const sel = editor.state.selection
                             if (!sel.empty) {
-                                editor.chain().focus().deleteSelection().insertContent(optimizedText).run()
+                                editor.chain().focus().deleteSelection().insertContent(processedText).run()
                             } else {
-                                editor.chain().focus().insertContent(optimizedText).run()
+                                editor.chain().focus().insertContent(processedText).run()
                             }
                         }
-                        setShowTextOptimizer(false)
+                        setShowSmartTextProcessor(false)
                     }}
-                    onClose={() => setShowTextOptimizer(false)}
+                    onClose={() => setShowSmartTextProcessor(false)}
                 />
             )}
 

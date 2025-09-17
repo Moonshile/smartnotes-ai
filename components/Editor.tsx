@@ -353,16 +353,16 @@ const Editor = React.forwardRef<EditorApi, EditorProps>(function Editor({ value,
             )}
 
             {/* 新功能模态框 */}
-          {showOutlineGenerator && (
-            <OutlineGenerator
-              onInsert={(content) => {
-                editor?.chain().focus().insertContent(content).run()
-                setShowOutlineGenerator(false)
-              }}
-              onClose={() => setShowOutlineGenerator(false)}
-              currentDocument={value}
-            />
-          )}
+            {showOutlineGenerator && (
+                <OutlineGenerator
+                    onInsert={(content) => {
+                        editor?.chain().focus().insertContent(content).run()
+                        setShowOutlineGenerator(false)
+                    }}
+                    onClose={() => setShowOutlineGenerator(false)}
+                    currentDocument={value}
+                />
+            )}
 
             {showTextOptimizer && (
                 <TextOptimizer

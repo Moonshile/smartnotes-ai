@@ -64,9 +64,9 @@ export default function OutlineGenerator({ onInsert, onClose, currentDocument = 
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({ 
-                    title: title.trim(), 
-                    type, 
+                body: JSON.stringify({
+                    title: title.trim(),
+                    type,
                     length,
                     contentHint: contentHint.trim() || undefined
                 }),
@@ -89,11 +89,9 @@ export default function OutlineGenerator({ onInsert, onClose, currentDocument = 
     const handleInsertOutline = () => {
         if (!result) return
 
-        // 生成干净的大纲HTML，不包含"文章大纲"等标题
-        const outlineHtml = generateCleanOutlineHtml(result.outline)
-        const content = `${outlineHtml}\n\n<p>${result.introduction}</p>`
-
-        onInsert(content)
+        // 生成包含描述文本的完整大纲HTML
+        const outlineHtml = generateCompleteOutlineHtml(result.outline, result.introduction)
+        onInsert(outlineHtml)
         onClose()
     }
 
@@ -105,13 +103,37 @@ export default function OutlineGenerator({ onInsert, onClose, currentDocument = 
         onClose()
     }
 
-    const generateCleanOutlineHtml = (outline: OutlineItem[]): string => {
-        return outline.map(item => {
+    const generateCompleteOutlineHtml = (outline: OutlineItem[], introduction: string): string => {
+        // 首先生成开头段落
+        const introHtml = `<p>${introduction}</p>`
+        
+        // 然后生成大纲结构，包含描述文本
+        const outlineHtml = outline.map(item => {
             const childrenHtml = item.children && item.children.length > 0 
-                ? generateCleanOutlineHtml(item.children) 
+                ? generateOutlineWithDescriptions(item.children) 
                 : ''
             
-            return `<h${item.level + 1}>${item.title}</h${item.level + 1}>${childrenHtml}`
+            const descriptionHtml = item.description 
+                ? `<p class="outline-description">${item.description}</p>` 
+                : ''
+            
+            return `<h${item.level + 1}>${item.title}</h${item.level + 1}>${descriptionHtml}${childrenHtml}`
+        }).join('\n')
+        
+        return `${introHtml}\n\n${outlineHtml}`
+    }
+
+    const generateOutlineWithDescriptions = (outline: OutlineItem[]): string => {
+        return outline.map(item => {
+            const childrenHtml = item.children && item.children.length > 0 
+                ? generateOutlineWithDescriptions(item.children) 
+                : ''
+            
+            const descriptionHtml = item.description 
+                ? `<p class="outline-description">${item.description}</p>` 
+                : ''
+            
+            return `<h${item.level + 1}>${item.title}</h${item.level + 1}>${descriptionHtml}${childrenHtml}`
         }).join('\n')
     }
 
@@ -339,10 +361,10 @@ function extractTitleFromDocument(doc: string): string | null {
 // 分析标题和内容提示，推测文章类型和长度
 function analyzeTitle(title: string, contentHint: string): { type: 'article' | 'report' | 'essay' | 'blog', length: 'short' | 'medium' | 'long' } {
     const text = (title + ' ' + contentHint).toLowerCase()
-    
+
     // 推测文章类型
     let type: 'article' | 'report' | 'essay' | 'blog' = 'article'
-    
+
     if (text.includes('报告') || text.includes('分析') || text.includes('调研') || text.includes('数据')) {
         type = 'report'
     } else if (text.includes('论文') || text.includes('研究') || text.includes('学术') || text.includes('理论')) {
@@ -350,15 +372,15 @@ function analyzeTitle(title: string, contentHint: string): { type: 'article' | '
     } else if (text.includes('博客') || text.includes('分享') || text.includes('经验') || text.includes('心得')) {
         type = 'blog'
     }
-    
+
     // 推测文章长度
     let length: 'short' | 'medium' | 'long' = 'medium'
-    
+
     if (text.includes('简单') || text.includes('简要') || text.includes('概述') || text.includes('简介')) {
         length = 'short'
     } else if (text.includes('详细') || text.includes('深入') || text.includes('全面') || text.includes('完整') || text.includes('深度')) {
         length = 'long'
     }
-    
+
     return { type, length }
 }

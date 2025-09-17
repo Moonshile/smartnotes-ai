@@ -124,10 +124,11 @@ function buildOutlinePrompt(title: string, type: string, length: string, content
 1. 文章类型：${typeMap[type as keyof typeof typeMap]}
 2. 文章长度：${lengthMap[length as keyof typeof lengthMap]}
 3. 大纲结构：必须包含多级标题（主标题和子标题），层次清晰
-4. 开头段落：200-300字，引人入胜，与主题紧密相关`
+4. 开头段落：200-300字，引人入胜，与主题紧密相关
+5. 描述文本：每个章节都要有详细、具体的描述文本（30-80字），说明该章节的核心内容和要点`
 
     if (contentHint) {
-        prompt += `\n5. 内容要求：${contentHint}`
+        prompt += `\n6. 内容要求：${contentHint}`
     }
 
     prompt += `
@@ -138,30 +139,31 @@ function buildOutlinePrompt(title: string, type: string, length: string, content
     {
       "level": 1,
       "title": "主标题",
-      "description": "章节描述",
+      "description": "详细描述该章节的核心内容、主要观点和论述重点，30-80字",
       "children": [
         {
           "level": 2,
           "title": "子标题",
-          "description": "子章节描述"
+          "description": "具体描述该子章节要讨论的内容和角度，20-50字"
         },
         {
           "level": 2,
           "title": "另一个子标题",
-          "description": "另一个子章节描述"
+          "description": "具体描述该子章节要讨论的内容和角度，20-50字"
         }
       ]
     }
   ],
-  "introduction": "开头段落内容",
+  "introduction": "开头段落内容，200-300字，直接切入主题",
   "suggestions": ["写作建议1", "写作建议2", "写作建议3"]
 }
 
 注意：
 - 确保每个主标题都有2-4个子标题
 - 子标题要具体、有针对性
-- 描述要简洁明了，不超过50字
-- 开头段落要直接切入主题，不要包含"本文将"等套话`
+- 描述文本要详细说明章节内容，不要过于简单
+- 开头段落要直接切入主题，不要包含"本文将"等套话
+- 描述文本要帮助读者理解每个章节的具体内容和价值`
 
     return prompt
 }
@@ -268,61 +270,61 @@ function generateMockOutline(title: string, type: string, length: string, conten
         {
             level: 1,
             title: '引言',
-            description: '介绍主题背景和重要性',
+            description: '深入分析主题产生的时代背景，阐述其在当前社会中的重要地位和现实意义，为后续论述奠定理论基础',
             children: [
                 {
                     level: 2,
                     title: '问题提出',
-                    description: '阐述要解决的核心问题'
+                    description: '系统梳理当前面临的核心挑战和关键问题，明确研究的必要性和紧迫性'
                 },
                 {
                     level: 2,
                     title: '研究意义',
-                    description: '说明研究的重要性和价值'
+                    description: '从理论价值和实践应用两个维度，全面阐述本研究的重要性和预期贡献'
                 },
                 {
                     level: 2,
                     title: '研究方法',
-                    description: '概述采用的研究方法'
+                    description: '详细介绍采用的研究方法和技术路线，确保研究的科学性和可靠性'
                 }
             ]
         },
         {
             level: 1,
             title: '主体内容',
-            description: '详细阐述主要观点',
+            description: '从多个角度深入分析主题的核心要素，通过理论阐述和实践案例相结合的方式，全面展现主题的丰富内涵',
             children: [
                 {
                     level: 2,
                     title: '核心观点一',
-                    description: '第一个主要观点的详细分析'
+                    description: '从理论基础出发，深入分析第一个核心观点，结合具体案例进行详细阐述'
                 },
                 {
                     level: 2,
                     title: '核心观点二',
-                    description: '第二个主要观点的详细分析'
+                    description: '从实践应用角度，全面分析第二个核心观点，探讨其在实际中的表现和影响'
                 },
                 {
                     level: 2,
                     title: '核心观点三',
-                    description: '第三个主要观点的详细分析'
+                    description: '从发展前景角度，深入探讨第三个核心观点，分析其未来发展趋势和潜力'
                 }
             ]
         },
         {
             level: 1,
             title: '结论',
-            description: '总结全文并提出展望',
+            description: '系统总结全文的核心观点和主要发现，提出具有前瞻性的思考和建议，为相关领域的发展提供参考',
             children: [
                 {
                     level: 2,
                     title: '主要发现',
-                    description: '总结主要研究成果'
+                    description: '全面梳理研究过程中的重要发现和关键结论，为读者提供清晰的认识'
                 },
                 {
                     level: 2,
                     title: '未来展望',
-                    description: '展望未来发展方向'
+                    description: '基于当前研究基础，展望未来发展趋势和可能的研究方向，为后续研究提供指导'
                 }
             ]
         }
@@ -365,13 +367,13 @@ function generateMockOutline(title: string, type: string, length: string, conten
 
 function generateIntroduction(title: string, contentHint?: string): string {
     let intro = `关于"${title}"这个话题，在当今社会具有重要的现实意义。`
-    
+
     if (contentHint) {
         intro += `特别是${contentHint}，这为我们的研究提供了新的视角。`
     }
-    
+
     intro += `随着时代的发展，我们需要深入思考这一问题的本质和影响。本文将从多个角度分析这一主题，希望能够为读者提供有价值的见解和思考。`
-    
+
     return intro
 }
 

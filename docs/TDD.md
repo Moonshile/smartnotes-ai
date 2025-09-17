@@ -3,7 +3,7 @@
 ## 文档信息
 
 - **版本**: v1.0
-- **创建日期**: 2024年12月
+- **创建日期**: 2025年9月
 - **产品名称**: SmartNotes.ai
 - **升级版本**: v2.0
 - **技术栈**: Next.js 14, TypeScript, Tiptap, OpenAI API
@@ -261,7 +261,7 @@ const searchStrategies = {
   academic: {
     api: 'Google Scholar API',
     maxResults: 5,
-    yearRange: '2020-2024'
+    yearRange: '2020-2025'
   }
 }
 ```

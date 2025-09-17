@@ -21,9 +21,10 @@ interface SmartTextProcessorProps {
     selectedText: string
     onProcess: (processedText: string) => void
     onClose: () => void
+    documentContext?: string // 文档上下文
 }
 
-export default function SmartTextProcessor({ selectedText, onProcess, onClose }: SmartTextProcessorProps) {
+export default function SmartTextProcessor({ selectedText, onProcess, onClose, documentContext = '' }: SmartTextProcessorProps) {
     const [prompt, setPrompt] = useState('')
     const [operation, setOperation] = useState<'optimize' | 'expand' | 'summarize' | 'rewrite' | 'continue'>('optimize')
     const [tone, setTone] = useState('')
@@ -35,6 +36,11 @@ export default function SmartTextProcessor({ selectedText, onProcess, onClose }:
     const [chatMessages, setChatMessages] = useState<ChatMessage[]>([])
     const [currentVersion, setCurrentVersion] = useState<TextProcessResult | null>(null)
     const [expandedMessages, setExpandedMessages] = useState<Set<string>>(new Set())
+    const [searchResults, setSearchResults] = useState<any[]>([])
+    const [isSearching, setIsSearching] = useState(false)
+    const [searchQuery, setSearchQuery] = useState('')
+    const [useContext, setUseContext] = useState(true)
+    const [useSearch, setUseSearch] = useState(false)
 
     // 根据提示语和操作类型自动推测参数
     useEffect(() => {
@@ -66,7 +72,9 @@ export default function SmartTextProcessor({ selectedText, onProcess, onClose }:
                     text: selectedText.trim(),
                     operation,
                     prompt: prompt.trim() || undefined,
-                    tone: tone.trim() || undefined
+                    tone: tone.trim() || undefined,
+                    context: useContext ? documentContext : undefined,
+                    searchResults: useSearch ? searchResults : undefined
                 }),
             })
 
@@ -117,6 +125,41 @@ export default function SmartTextProcessor({ selectedText, onProcess, onClose }:
             }
             return newSet
         })
+    }
+
+    const handleSearch = async () => {
+        if (!searchQuery.trim()) {
+            setError('请输入搜索关键词')
+            return
+        }
+
+        setIsSearching(true)
+        setError(null)
+
+        try {
+            const response = await fetch('/api/research', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    query: searchQuery.trim(),
+                    maxResults: 5
+                }),
+            })
+
+            const data = await response.json()
+
+            if (data.success) {
+                setSearchResults(data.data.results || [])
+            } else {
+                setError(data.error || '搜索失败')
+            }
+        } catch (err) {
+            setError('网络错误，请稍后再试')
+        } finally {
+            setIsSearching(false)
+        }
     }
 
     const handleIterate = async () => {
@@ -228,6 +271,87 @@ export default function SmartTextProcessor({ selectedText, onProcess, onClose }:
                                 <div className="bg-gray-50 p-3 rounded-md max-h-32 overflow-y-auto">
                                     <p className="text-sm text-gray-700">{selectedText}</p>
                                 </div>
+                            </div>
+
+                            {/* 上下文选择 */}
+                            {documentContext && (
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                        文档上下文
+                                    </label>
+                                    <div className="flex items-center space-x-4">
+                                        <label className="flex items-center">
+                                            <input
+                                                type="checkbox"
+                                                checked={useContext}
+                                                onChange={(e) => setUseContext(e.target.checked)}
+                                                className="mr-2"
+                                            />
+                                            <span className="text-sm text-gray-700">使用文档上下文</span>
+                                        </label>
+                                    </div>
+                                    {useContext && (
+                                        <div className="mt-2 bg-blue-50 p-3 rounded-md max-h-24 overflow-y-auto">
+                                            <p className="text-xs text-gray-600">
+                                                {documentContext.substring(0, 200)}
+                                                {documentContext.length > 200 && '...'}
+                                            </p>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
+                            {/* 搜索资料功能 */}
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    搜索相关资料
+                                </label>
+                                <div className="flex items-center space-x-4 mb-3">
+                                    <label className="flex items-center">
+                                        <input
+                                            type="checkbox"
+                                            checked={useSearch}
+                                            onChange={(e) => setUseSearch(e.target.checked)}
+                                            className="mr-2"
+                                        />
+                                        <span className="text-sm text-gray-700">搜索相关资料</span>
+                                    </label>
+                                </div>
+                                {useSearch && (
+                                    <div className="space-y-3">
+                                        <div className="flex space-x-2">
+                                            <input
+                                                type="text"
+                                                value={searchQuery}
+                                                onChange={(e) => setSearchQuery(e.target.value)}
+                                                placeholder="输入搜索关键词..."
+                                                className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                            />
+                                            <button
+                                                onClick={handleSearch}
+                                                disabled={isSearching || !searchQuery.trim()}
+                                                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                                            >
+                                                {isSearching ? '搜索中...' : '搜索'}
+                                            </button>
+                                        </div>
+                                        {searchResults.length > 0 && (
+                                            <div className="bg-green-50 border border-green-200 rounded-md p-3">
+                                                <div className="text-sm font-medium text-green-800 mb-2">
+                                                    找到 {searchResults.length} 条相关资料
+                                                </div>
+                                                <div className="space-y-2 max-h-32 overflow-y-auto">
+                                                    {searchResults.map((result, index) => (
+                                                        <div key={index} className="text-xs text-green-700">
+                                                            <div className="font-medium">{result.title}</div>
+                                                            <div className="text-gray-600">{result.summary}</div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
                             </div>
 
                             <div>

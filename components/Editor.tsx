@@ -367,6 +367,7 @@ const Editor = React.forwardRef<EditorApi, EditorProps>(function Editor({ value,
             {showSmartTextProcessor && (
                 <SmartTextProcessor
                     selectedText={selectedText}
+                    documentContext={value}
                     onProcess={(processedText) => {
                         if (editor) {
                             const sel = editor.state.selection

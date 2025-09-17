@@ -6,6 +6,8 @@ type TextProcessRequest = {
     prompt?: string
     tone?: string
     currentResult?: string
+    context?: string
+    searchResults?: any[]
 }
 
 type TextProcessResponse = {
@@ -20,7 +22,7 @@ type TextProcessResponse = {
 
 export async function POST(req: Request): Promise<Response> {
     try {
-        const { text, operation, prompt, tone, currentResult }: TextProcessRequest = await req.json()
+        const { text, operation, prompt, tone, currentResult, context, searchResults }: TextProcessRequest = await req.json()
 
         // 验证输入
         if (!text || typeof text !== 'string') {
@@ -52,8 +54,8 @@ export async function POST(req: Request): Promise<Response> {
         // 构建提示词
         const systemPrompt = buildSystemPrompt(operation)
         const userPrompt = currentResult
-            ? buildIterationPrompt(text, operation, prompt, tone, currentResult)
-            : buildUserPrompt(text, operation, prompt, tone)
+            ? buildIterationPrompt(text, operation, prompt, tone, currentResult, context, searchResults)
+            : buildUserPrompt(text, operation, prompt, tone, context, searchResults)
 
         // 调用OpenAI API
         const response = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -115,8 +117,23 @@ function buildSystemPrompt(operation: string): string {
     return prompts[operation as keyof typeof prompts] || prompts.optimize
 }
 
-function buildUserPrompt(text: string, operation: string, prompt?: string, tone?: string): string {
+function buildUserPrompt(text: string, operation: string, prompt?: string, tone?: string, context?: string, searchResults?: any[]): string {
     let userPrompt = `请处理以下文本：\n\n${text}\n\n`
+
+    // 添加上下文信息
+    if (context) {
+        userPrompt += `文档上下文：\n${context}\n\n`
+        userPrompt += `注意：请结合文档上下文来理解选中文本的含义和背景，确保处理结果与整体文档风格和内容保持一致。\n\n`
+    }
+
+    // 添加搜索资料
+    if (searchResults && searchResults.length > 0) {
+        userPrompt += `相关资料：\n`
+        searchResults.forEach((result, index) => {
+            userPrompt += `${index + 1}. ${result.title}\n${result.summary}\n\n`
+        })
+        userPrompt += `请参考以上相关资料来丰富和完善文本内容。\n\n`
+    }
 
     if (prompt) {
         userPrompt += `具体要求：${prompt}\n\n`
@@ -141,7 +158,7 @@ function buildUserPrompt(text: string, operation: string, prompt?: string, tone?
     return userPrompt
 }
 
-function buildIterationPrompt(text: string, operation: string, prompt: string | undefined, tone: string | undefined, currentResult: string): string {
+function buildIterationPrompt(text: string, operation: string, prompt: string | undefined, tone: string | undefined, currentResult: string, context?: string, searchResults?: any[]): string {
     let userPrompt = `请根据用户反馈对现有处理结果进行迭代优化。
 
 原始文本：
@@ -151,6 +168,21 @@ ${text}
 ${currentResult}
 
 用户反馈：${prompt || '请进一步优化'}`
+
+    // 添加上下文信息
+    if (context) {
+        userPrompt += `\n\n文档上下文：\n${context}\n`
+        userPrompt += `注意：请结合文档上下文来理解文本的含义和背景，确保迭代结果与整体文档风格和内容保持一致。`
+    }
+
+    // 添加搜索资料
+    if (searchResults && searchResults.length > 0) {
+        userPrompt += `\n\n相关资料：\n`
+        searchResults.forEach((result, index) => {
+            userPrompt += `${index + 1}. ${result.title}\n${result.summary}\n\n`
+        })
+        userPrompt += `请参考以上相关资料来丰富和完善迭代结果。`
+    }
 
     if (tone) {
         userPrompt += `\n语言风格：${tone}`

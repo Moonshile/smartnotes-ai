@@ -1,6 +1,8 @@
 "use client"
 
 import { useState, useEffect } from 'react'
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 
 interface TextProcessResult {
     processedText: string
@@ -136,15 +138,15 @@ export default function SmartTextProcessor({ selectedText, onProcess, onClose, d
         try {
             // 构建搜索提示，包含原文和用户要求
             let searchPrompt = `请从以下文本中提取3-5个关键词用于搜索相关资料，关键词应该是最能代表文本核心概念和主题的词汇：\n\n原文内容：\n${selectedText}\n\n`
-            
+
             if (prompt) {
                 searchPrompt += `用户处理要求：${prompt}\n\n`
             }
-            
+
             if (documentContext) {
                 searchPrompt += `文档上下文：\n${documentContext.substring(0, 500)}...\n\n`
             }
-            
+
             searchPrompt += `请基于原文内容、用户要求和文档上下文，提取最相关的搜索关键词。`
 
             const response = await fetch('/api/ai', {
@@ -366,7 +368,7 @@ export default function SmartTextProcessor({ selectedText, onProcess, onClose, d
                                             <div className="text-sm text-blue-800">
                                                 <div className="flex items-center gap-2 mb-2">
                                                     <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                                                        <path fillRule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clipRule="evenodd"/>
+                                                        <path fillRule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clipRule="evenodd" />
                                                     </svg>
                                                     <span className="font-medium">智能搜索</span>
                                                 </div>
@@ -501,7 +503,7 @@ export default function SmartTextProcessor({ selectedText, onProcess, onClose, d
                                                 <div className="text-sm font-medium mb-1">
                                                     {message.type === 'user' ? '您' : 'AI助手'}
                                                 </div>
-                                                
+
                                                 {/* 用户消息显示 */}
                                                 {message.type === 'user' ? (
                                                     <div className="text-sm">
@@ -523,9 +525,10 @@ export default function SmartTextProcessor({ selectedText, onProcess, onClose, d
                                                 {message.result && (
                                                     <div className="mt-2 pt-2 border-t border-gray-200">
                                                         <div className="text-xs text-gray-500 mb-2">处理结果预览：</div>
-                                                        <div className="text-xs text-gray-600 max-h-20 overflow-y-auto">
-                                                            {message.result.processedText.substring(0, 100)}
-                                                            {message.result.processedText.length > 100 && '...'}
+                                                        <div className="text-xs text-gray-600 max-h-20 overflow-y-auto prose prose-sm max-w-none">
+                                                            <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                                                {message.result.processedText.substring(0, 100) + (message.result.processedText.length > 100 ? '...' : '')}
+                                                            </ReactMarkdown>
                                                         </div>
 
                                                         {/* 展开/收起按钮 */}
@@ -543,8 +546,10 @@ export default function SmartTextProcessor({ selectedText, onProcess, onClose, d
                                                             <div className="mt-2 p-2 bg-gray-50 rounded text-xs">
                                                                 <div className="mb-2">
                                                                     <div className="font-medium mb-1">完整处理结果：</div>
-                                                                    <div className="text-gray-600 whitespace-pre-wrap max-h-40 overflow-y-auto">
-                                                                        {message.result.processedText}
+                                                                    <div className="text-gray-600 max-h-40 overflow-y-auto prose prose-sm max-w-none">
+                                                                        <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                                                            {message.result.processedText}
+                                                                        </ReactMarkdown>
                                                                     </div>
                                                                 </div>
                                                                 {message.result.suggestions.length > 0 && (
@@ -591,7 +596,11 @@ export default function SmartTextProcessor({ selectedText, onProcess, onClose, d
                                 <div>
                                     <h3 className="text-lg font-semibold mb-3">当前版本预览</h3>
                                     <div className="bg-gray-50 p-4 rounded-md">
-                                        <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">{currentVersion.processedText}</p>
+                                        <div className="text-gray-700 leading-relaxed prose prose-sm max-w-none">
+                                            <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                                {currentVersion.processedText}
+                                            </ReactMarkdown>
+                                        </div>
                                     </div>
                                     {currentVersion.suggestions.length > 0 && (
                                         <div className="mt-3">

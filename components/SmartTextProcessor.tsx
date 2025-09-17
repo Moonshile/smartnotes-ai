@@ -14,6 +14,7 @@ interface ChatMessage {
     content: string
     timestamp: Date
     result?: TextProcessResult
+    userPrompt?: string // 用户输入的优化提示
 }
 
 interface SmartTextProcessorProps {
@@ -33,6 +34,7 @@ export default function SmartTextProcessor({ selectedText, onProcess, onClose }:
     const [isIterating, setIsIterating] = useState(false)
     const [chatMessages, setChatMessages] = useState<ChatMessage[]>([])
     const [currentVersion, setCurrentVersion] = useState<TextProcessResult | null>(null)
+    const [expandedMessages, setExpandedMessages] = useState<Set<string>>(new Set())
 
     // 根据提示语和操作类型自动推测参数
     useEffect(() => {
@@ -105,6 +107,18 @@ export default function SmartTextProcessor({ selectedText, onProcess, onClose }:
         setCurrentVersion(version)
     }
 
+    const toggleExpanded = (messageId: string) => {
+        setExpandedMessages(prev => {
+            const newSet = new Set(prev)
+            if (newSet.has(messageId)) {
+                newSet.delete(messageId)
+            } else {
+                newSet.add(messageId)
+            }
+            return newSet
+        })
+    }
+
     const handleIterate = async () => {
         if (!currentVersion || !iterationPrompt.trim()) {
             setError('请输入迭代提示')
@@ -118,8 +132,9 @@ export default function SmartTextProcessor({ selectedText, onProcess, onClose }:
         const userMessage: ChatMessage = {
             id: Date.now().toString(),
             type: 'user',
-            content: iterationPrompt.trim(),
-            timestamp: new Date()
+            content: `优化建议：${iterationPrompt.trim()}`,
+            timestamp: new Date(),
+            userPrompt: iterationPrompt.trim()
         }
         setChatMessages(prev => [...prev, userMessage])
 
@@ -315,6 +330,17 @@ export default function SmartTextProcessor({ selectedText, onProcess, onClose }:
                                                     {message.type === 'user' ? '您' : 'AI助手'}
                                                 </div>
                                                 <div className="text-sm">{message.content}</div>
+                                                
+                                                {/* 用户提示展示 */}
+                                                {message.type === 'user' && message.userPrompt && (
+                                                    <div className="mt-2 pt-2 border-t border-blue-300">
+                                                        <div className="text-xs font-medium mb-1">您的优化建议：</div>
+                                                        <div className="text-xs bg-blue-400 bg-opacity-20 p-2 rounded">
+                                                            {message.userPrompt}
+                                                        </div>
+                                                    </div>
+                                                )}
+
                                                 {message.result && (
                                                     <div className="mt-2 pt-2 border-t border-gray-200">
                                                         <div className="text-xs text-gray-500 mb-2">处理结果预览：</div>
@@ -322,6 +348,43 @@ export default function SmartTextProcessor({ selectedText, onProcess, onClose }:
                                                             {message.result.processedText.substring(0, 100)}
                                                             {message.result.processedText.length > 100 && '...'}
                                                         </div>
+                                                        
+                                                        {/* 展开/收起按钮 */}
+                                                        <div className="mt-2">
+                                                            <button
+                                                                onClick={() => toggleExpanded(message.id)}
+                                                                className="text-xs px-2 py-1 bg-gray-500 text-white rounded hover:bg-gray-600 mr-2"
+                                                            >
+                                                                {expandedMessages.has(message.id) ? '收起详情' : '展开详情'}
+                                                            </button>
+                                                        </div>
+
+                                                        {/* 展开的详细内容 */}
+                                                        {expandedMessages.has(message.id) && (
+                                                            <div className="mt-2 p-2 bg-gray-50 rounded text-xs">
+                                                                <div className="mb-2">
+                                                                    <div className="font-medium mb-1">完整处理结果：</div>
+                                                                    <div className="text-gray-600 whitespace-pre-wrap max-h-40 overflow-y-auto">
+                                                                        {message.result.processedText}
+                                                                    </div>
+                                                                </div>
+                                                                {message.result.suggestions.length > 0 && (
+                                                                    <div className="border-t pt-2 mt-2">
+                                                                        <div className="font-medium mb-1">改进建议：</div>
+                                                                        <ul className="space-y-1">
+                                                                            {message.result.suggestions.map((suggestion, idx) => (
+                                                                                <li key={idx} className="text-gray-600">• {suggestion}</li>
+                                                                            ))}
+                                                                        </ul>
+                                                                    </div>
+                                                                )}
+                                                                <div className="border-t pt-2 mt-2">
+                                                                    <div className="font-medium mb-1">处理方式：</div>
+                                                                    <div className="text-gray-600">{getOperationLabel(message.result.operation)}</div>
+                                                                </div>
+                                                            </div>
+                                                        )}
+
                                                         <div className="flex space-x-2 mt-2">
                                                             <button
                                                                 onClick={() => handleSelectVersion(message.result!)}

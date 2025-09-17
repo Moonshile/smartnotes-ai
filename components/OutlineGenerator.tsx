@@ -21,6 +21,7 @@ interface ChatMessage {
     content: string
     timestamp: Date
     result?: OutlineResult
+    userPrompt?: string // 用户输入的优化提示
 }
 
 interface OutlineGeneratorProps {
@@ -41,6 +42,7 @@ export default function OutlineGenerator({ onInsert, onClose, currentDocument = 
     const [isIterating, setIsIterating] = useState(false)
     const [chatMessages, setChatMessages] = useState<ChatMessage[]>([])
     const [currentVersion, setCurrentVersion] = useState<OutlineResult | null>(null)
+    const [expandedMessages, setExpandedMessages] = useState<Set<string>>(new Set())
 
     // 从当前文档中提取标题
     useEffect(() => {
@@ -123,8 +125,9 @@ export default function OutlineGenerator({ onInsert, onClose, currentDocument = 
         const userMessage: ChatMessage = {
             id: Date.now().toString(),
             type: 'user',
-            content: iterationPrompt.trim(),
-            timestamp: new Date()
+            content: `优化建议：${iterationPrompt.trim()}`,
+            timestamp: new Date(),
+            userPrompt: iterationPrompt.trim()
         }
         setChatMessages(prev => [...prev, userMessage])
 
@@ -192,6 +195,18 @@ export default function OutlineGenerator({ onInsert, onClose, currentDocument = 
 
     const handleSelectVersion = (version: OutlineResult) => {
         setCurrentVersion(version)
+    }
+
+    const toggleExpanded = (messageId: string) => {
+        setExpandedMessages(prev => {
+            const newSet = new Set(prev)
+            if (newSet.has(messageId)) {
+                newSet.delete(messageId)
+            } else {
+                newSet.add(messageId)
+            }
+            return newSet
+        })
     }
 
     const generateCompleteOutlineHtml = (outline: OutlineItem[], introduction: string): string => {
@@ -358,6 +373,17 @@ export default function OutlineGenerator({ onInsert, onClose, currentDocument = 
                                                     {message.type === 'user' ? '您' : 'AI助手'}
                                                 </div>
                                                 <div className="text-sm">{message.content}</div>
+                                                
+                                                {/* 用户提示展示 */}
+                                                {message.type === 'user' && message.userPrompt && (
+                                                    <div className="mt-2 pt-2 border-t border-blue-300">
+                                                        <div className="text-xs font-medium mb-1">您的优化建议：</div>
+                                                        <div className="text-xs bg-blue-400 bg-opacity-20 p-2 rounded">
+                                                            {message.userPrompt}
+                                                        </div>
+                                                    </div>
+                                                )}
+
                                                 {message.result && (
                                                     <div className="mt-2 pt-2 border-t border-gray-200">
                                                         <div className="text-xs text-gray-500 mb-2">大纲预览：</div>
@@ -371,6 +397,62 @@ export default function OutlineGenerator({ onInsert, onClose, currentDocument = 
                                                                 <div className="text-gray-400">...等{message.result.outline.length}个章节</div>
                                                             )}
                                                         </div>
+                                                        
+                                                        {/* 展开/收起按钮 */}
+                                                        <div className="mt-2">
+                                                            <button
+                                                                onClick={() => toggleExpanded(message.id)}
+                                                                className="text-xs px-2 py-1 bg-gray-500 text-white rounded hover:bg-gray-600 mr-2"
+                                                            >
+                                                                {expandedMessages.has(message.id) ? '收起详情' : '展开详情'}
+                                                            </button>
+                                                        </div>
+
+                                                        {/* 展开的详细内容 */}
+                                                        {expandedMessages.has(message.id) && (
+                                                            <div className="mt-2 p-2 bg-gray-50 rounded text-xs">
+                                                                <div className="mb-2">
+                                                                    <div className="font-medium mb-1">完整大纲：</div>
+                                                                    <div className="space-y-1">
+                                                                        {message.result.outline.map((item, idx) => (
+                                                                            <div key={idx} className="ml-2">
+                                                                                <div className="font-medium">{item.title}</div>
+                                                                                {item.description && (
+                                                                                    <div className="text-gray-600 text-xs mt-1">{item.description}</div>
+                                                                                )}
+                                                                                {item.children && item.children.length > 0 && (
+                                                                                    <div className="ml-4 mt-1 space-y-1">
+                                                                                        {item.children.map((child, childIdx) => (
+                                                                                            <div key={childIdx} className="text-gray-600">
+                                                                                                • {child.title}
+                                                                                                {child.description && (
+                                                                                                    <div className="text-xs text-gray-500 ml-2">{child.description}</div>
+                                                                                                )}
+                                                                                            </div>
+                                                                                        ))}
+                                                                                    </div>
+                                                                                )}
+                                                                            </div>
+                                                                        ))}
+                                                                    </div>
+                                                                </div>
+                                                                <div className="border-t pt-2">
+                                                                    <div className="font-medium mb-1">开头段落：</div>
+                                                                    <div className="text-gray-600">{message.result.introduction}</div>
+                                                                </div>
+                                                                {message.result.suggestions.length > 0 && (
+                                                                    <div className="border-t pt-2 mt-2">
+                                                                        <div className="font-medium mb-1">写作建议：</div>
+                                                                        <ul className="space-y-1">
+                                                                            {message.result.suggestions.map((suggestion, idx) => (
+                                                                                <li key={idx} className="text-gray-600">• {suggestion}</li>
+                                                                            ))}
+                                                                        </ul>
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        )}
+
                                                         <div className="flex space-x-2 mt-2">
                                                             <button
                                                                 onClick={() => handleSelectVersion(message.result!)}

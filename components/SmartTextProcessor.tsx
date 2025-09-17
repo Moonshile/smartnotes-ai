@@ -74,7 +74,7 @@ export default function SmartTextProcessor({ selectedText, onProcess, onClose }:
                 const newResult = data.data
                 setResult(newResult)
                 setCurrentVersion(newResult)
-                
+
                 // 添加初始处理消息到聊天记录
                 const initialMessage: ChatMessage = {
                     id: Date.now().toString(),
@@ -143,7 +143,7 @@ export default function SmartTextProcessor({ selectedText, onProcess, onClose }:
             if (data.success) {
                 const newResult = data.data
                 setCurrentVersion(newResult)
-                
+
                 // 添加AI回复消息到聊天记录
                 const assistantMessage: ChatMessage = {
                     id: (Date.now() + 1).toString(),
@@ -226,8 +226,8 @@ export default function SmartTextProcessor({ selectedText, onProcess, onClose }:
                                             type="button"
                                             onClick={() => setOperation(op)}
                                             className={`p-3 text-left rounded-md border-2 transition-colors ${operation === op
-                                                    ? 'border-blue-500 bg-blue-50 text-blue-700'
-                                                    : 'border-gray-200 hover:border-gray-300'
+                                                ? 'border-blue-500 bg-blue-50 text-blue-700'
+                                                : 'border-gray-200 hover:border-gray-300'
                                                 }`}
                                         >
                                             <div className="font-medium">{getOperationLabel(op)}</div>
@@ -303,15 +303,14 @@ export default function SmartTextProcessor({ selectedText, onProcess, onClose }:
                                     <h3 className="text-lg font-semibold">迭代历史</h3>
                                     <p className="text-sm text-gray-600">查看和选择不同版本的处理结果</p>
                                 </div>
-                                
+
                                 <div className="max-h-96 overflow-y-auto p-4 space-y-4">
                                     {chatMessages.map((message, index) => (
                                         <div key={message.id} className={`flex ${message.type === 'user' ? 'justify-end' : 'justify-start'}`}>
-                                            <div className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${
-                                                message.type === 'user' 
-                                                    ? 'bg-blue-500 text-white' 
+                                            <div className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${message.type === 'user'
+                                                    ? 'bg-blue-500 text-white'
                                                     : 'bg-gray-100 text-gray-800'
-                                            }`}>
+                                                }`}>
                                                 <div className="text-sm font-medium mb-1">
                                                     {message.type === 'user' ? '您' : 'AI助手'}
                                                 </div>

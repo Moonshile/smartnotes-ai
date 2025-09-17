@@ -123,7 +123,7 @@ function buildUserPrompt(text: string, operation: string, prompt?: string, tone?
     // 添加上下文信息
     if (context) {
         userPrompt += `文档上下文：\n${context}\n\n`
-        userPrompt += `注意：请结合文档上下文来理解选中文本的含义和背景，确保处理结果与整体文档风格和内容保持一致。\n\n`
+        userPrompt += `注意：请结合文档上下文来理解选中文本的含义和背景，确保处理结果与整体文档风格和内容保持一致。避免重复文档中已有的标题或内容。\n\n`
     }
 
     // 添加搜索资料
@@ -153,7 +153,7 @@ function buildUserPrompt(text: string, operation: string, prompt?: string, tone?
 
     userPrompt += operationInstructions[operation as keyof typeof operationInstructions] || operationInstructions.optimize
 
-    userPrompt += '\n\n请直接返回处理后的文本，不要添加任何解释或说明。'
+    userPrompt += '\n\n请直接返回处理后的纯文本内容，不要使用HTML标签，不要添加任何解释或说明。'
 
     return userPrompt
 }
@@ -172,7 +172,7 @@ ${currentResult}
     // 添加上下文信息
     if (context) {
         userPrompt += `\n\n文档上下文：\n${context}\n`
-        userPrompt += `注意：请结合文档上下文来理解文本的含义和背景，确保迭代结果与整体文档风格和内容保持一致。`
+        userPrompt += `注意：请结合文档上下文来理解文本的含义和背景，确保迭代结果与整体文档风格和内容保持一致。避免重复文档中已有的标题或内容。`
     }
 
     // 添加搜索资料
@@ -197,7 +197,7 @@ ${currentResult}
     }
 
     userPrompt += '\n\n' + (operationInstructions[operation as keyof typeof operationInstructions] || operationInstructions.optimize)
-    userPrompt += '\n\n请直接返回改进后的文本，不要添加任何解释或说明。'
+    userPrompt += '\n\n请直接返回改进后的纯文本内容，不要使用HTML标签，不要添加任何解释或说明。'
 
     return userPrompt
 }
@@ -206,9 +206,15 @@ function parseTextProcessResponse(content: string, operation: string) {
     // 清理内容，移除可能的格式标记
     let processedText = content.trim()
 
+    // 移除HTML标签
+    processedText = processedText.replace(/<[^>]*>/g, '')
+    
     // 移除常见的AI回复格式
     processedText = processedText.replace(/^(处理后的文本|优化后的文本|扩展后的文本|摘要|重写后的文本|续写内容)[:：]\s*/i, '')
     processedText = processedText.replace(/^(以下是|这是)[:：]\s*/i, '')
+    
+    // 清理多余的空白字符
+    processedText = processedText.replace(/\n\s*\n/g, '\n').trim()
 
     // 生成建议
     const suggestions = generateSuggestions(operation, processedText)

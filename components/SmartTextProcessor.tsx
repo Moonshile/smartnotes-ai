@@ -192,7 +192,9 @@ export default function SmartTextProcessor({ selectedText, onProcess, onClose, d
                     operation,
                     prompt: iterationPrompt.trim(),
                     tone: tone.trim() || undefined,
-                    currentResult: currentVersion.processedText
+                    currentResult: currentVersion.processedText,
+                    context: useContext ? documentContext : undefined,
+                    searchResults: useSearch ? searchResults : undefined
                 }),
             })
 
@@ -557,6 +559,23 @@ export default function SmartTextProcessor({ selectedText, onProcess, onClose, d
                             {/* 迭代输入区域 */}
                             <div className="border-t pt-4">
                                 <h4 className="text-md font-semibold mb-3">继续优化</h4>
+                                
+                                {/* 显示当前设置状态 */}
+                                <div className="mb-4 p-3 bg-blue-50 rounded-md">
+                                    <div className="text-sm text-blue-800">
+                                        <div className="flex items-center gap-4">
+                                            <span className={`flex items-center gap-1 ${useContext ? 'text-green-600' : 'text-gray-500'}`}>
+                                                <div className={`w-2 h-2 rounded-full ${useContext ? 'bg-green-500' : 'bg-gray-400'}`}></div>
+                                                {useContext ? '使用文档上下文' : '未使用文档上下文'}
+                                            </span>
+                                            <span className={`flex items-center gap-1 ${useSearch ? 'text-green-600' : 'text-gray-500'}`}>
+                                                <div className={`w-2 h-2 rounded-full ${useSearch ? 'bg-green-500' : 'bg-gray-400'}`}></div>
+                                                {useSearch ? `使用搜索资料 (${searchResults.length}条)` : '未使用搜索资料'}
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                                
                                 <div className="space-y-3">
                                     <div>
                                         <label className="block text-sm font-medium text-gray-700 mb-2">

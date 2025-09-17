@@ -8,6 +8,14 @@ interface TextProcessResult {
     operation: string
 }
 
+interface ChatMessage {
+    id: string
+    type: 'user' | 'assistant'
+    content: string
+    timestamp: Date
+    result?: TextProcessResult
+}
+
 interface SmartTextProcessorProps {
     selectedText: string
     onProcess: (processedText: string) => void
@@ -23,6 +31,8 @@ export default function SmartTextProcessor({ selectedText, onProcess, onClose }:
     const [error, setError] = useState<string | null>(null)
     const [iterationPrompt, setIterationPrompt] = useState('')
     const [isIterating, setIsIterating] = useState(false)
+    const [chatMessages, setChatMessages] = useState<ChatMessage[]>([])
+    const [currentVersion, setCurrentVersion] = useState<TextProcessResult | null>(null)
 
     // 根据提示语和操作类型自动推测参数
     useEffect(() => {
@@ -61,7 +71,19 @@ export default function SmartTextProcessor({ selectedText, onProcess, onClose }:
             const data = await response.json()
 
             if (data.success) {
-                setResult(data.data)
+                const newResult = data.data
+                setResult(newResult)
+                setCurrentVersion(newResult)
+                
+                // 添加初始处理消息到聊天记录
+                const initialMessage: ChatMessage = {
+                    id: Date.now().toString(),
+                    type: 'assistant',
+                    content: `已成功${getOperationLabel(operation)}选中文本`,
+                    timestamp: new Date(),
+                    result: newResult
+                }
+                setChatMessages([initialMessage])
             } else {
                 setError(data.error || '文本处理失败')
             }
@@ -72,20 +94,34 @@ export default function SmartTextProcessor({ selectedText, onProcess, onClose }:
         }
     }
 
-    const handleInsert = () => {
-        if (!result) return
-        onProcess(result.processedText)
+    const handleInsert = (version?: TextProcessResult) => {
+        const targetResult = version || currentVersion
+        if (!targetResult) return
+        onProcess(targetResult.processedText)
         onClose()
     }
 
+    const handleSelectVersion = (version: TextProcessResult) => {
+        setCurrentVersion(version)
+    }
+
     const handleIterate = async () => {
-        if (!result || !iterationPrompt.trim()) {
+        if (!currentVersion || !iterationPrompt.trim()) {
             setError('请输入迭代提示')
             return
         }
 
         setIsIterating(true)
         setError(null)
+
+        // 添加用户消息到聊天记录
+        const userMessage: ChatMessage = {
+            id: Date.now().toString(),
+            type: 'user',
+            content: iterationPrompt.trim(),
+            timestamp: new Date()
+        }
+        setChatMessages(prev => [...prev, userMessage])
 
         try {
             const response = await fetch('/api/text-process', {
@@ -98,14 +134,25 @@ export default function SmartTextProcessor({ selectedText, onProcess, onClose }:
                     operation,
                     prompt: iterationPrompt.trim(),
                     tone: tone.trim() || undefined,
-                    currentResult: result.processedText
+                    currentResult: currentVersion.processedText
                 }),
             })
 
             const data = await response.json()
 
             if (data.success) {
-                setResult(data.data)
+                const newResult = data.data
+                setCurrentVersion(newResult)
+                
+                // 添加AI回复消息到聊天记录
+                const assistantMessage: ChatMessage = {
+                    id: (Date.now() + 1).toString(),
+                    type: 'assistant',
+                    content: `已根据您的反馈优化处理结果，主要改进包括：${data.data.suggestions?.join('、') || '表达优化和内容完善'}`,
+                    timestamp: new Date(),
+                    result: newResult
+                }
+                setChatMessages(prev => [...prev, assistantMessage])
                 setIterationPrompt('')
             } else {
                 setError(data.error || '迭代处理失败')
@@ -250,33 +297,84 @@ export default function SmartTextProcessor({ selectedText, onProcess, onClose }:
                                 <p className="text-green-700">已成功{getOperationLabel(result.operation)}选中文本</p>
                             </div>
 
-                            <div>
-                                <h3 className="text-lg font-semibold mb-3">处理结果</h3>
-                                <div className="bg-gray-50 p-4 rounded-md">
-                                    <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">{result.processedText}</p>
+                            {/* 聊天记录区域 */}
+                            <div className="border rounded-lg">
+                                <div className="bg-gray-50 px-4 py-2 border-b">
+                                    <h3 className="text-lg font-semibold">迭代历史</h3>
+                                    <p className="text-sm text-gray-600">查看和选择不同版本的处理结果</p>
+                                </div>
+                                
+                                <div className="max-h-96 overflow-y-auto p-4 space-y-4">
+                                    {chatMessages.map((message, index) => (
+                                        <div key={message.id} className={`flex ${message.type === 'user' ? 'justify-end' : 'justify-start'}`}>
+                                            <div className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${
+                                                message.type === 'user' 
+                                                    ? 'bg-blue-500 text-white' 
+                                                    : 'bg-gray-100 text-gray-800'
+                                            }`}>
+                                                <div className="text-sm font-medium mb-1">
+                                                    {message.type === 'user' ? '您' : 'AI助手'}
+                                                </div>
+                                                <div className="text-sm">{message.content}</div>
+                                                {message.result && (
+                                                    <div className="mt-2 pt-2 border-t border-gray-200">
+                                                        <div className="text-xs text-gray-500 mb-2">处理结果预览：</div>
+                                                        <div className="text-xs text-gray-600 max-h-20 overflow-y-auto">
+                                                            {message.result.processedText.substring(0, 100)}
+                                                            {message.result.processedText.length > 100 && '...'}
+                                                        </div>
+                                                        <div className="flex space-x-2 mt-2">
+                                                            <button
+                                                                onClick={() => handleSelectVersion(message.result!)}
+                                                                className="text-xs px-2 py-1 bg-blue-500 text-white rounded hover:bg-blue-600"
+                                                            >
+                                                                选择此版本
+                                                            </button>
+                                                            <button
+                                                                onClick={() => handleInsert(message.result)}
+                                                                className="text-xs px-2 py-1 bg-green-500 text-white rounded hover:bg-green-600"
+                                                            >
+                                                                插入此版本
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    ))}
                                 </div>
                             </div>
 
-                            {result.suggestions.length > 0 && (
+                            {/* 当前版本预览 */}
+                            {currentVersion && (
                                 <div>
-                                    <h3 className="text-lg font-semibold mb-3">改进建议</h3>
-                                    <ul className="space-y-1">
-                                        {result.suggestions.map((suggestion, index) => (
-                                            <li key={index} className="flex items-start">
-                                                <span className="text-blue-500 mr-2">•</span>
-                                                <span className="text-gray-700">{suggestion}</span>
-                                            </li>
-                                        ))}
-                                    </ul>
+                                    <h3 className="text-lg font-semibold mb-3">当前版本预览</h3>
+                                    <div className="bg-gray-50 p-4 rounded-md">
+                                        <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">{currentVersion.processedText}</p>
+                                    </div>
+                                    {currentVersion.suggestions.length > 0 && (
+                                        <div className="mt-3">
+                                            <h4 className="font-medium mb-2">改进建议：</h4>
+                                            <ul className="space-y-1">
+                                                {currentVersion.suggestions.map((suggestion, index) => (
+                                                    <li key={index} className="flex items-start text-sm">
+                                                        <span className="text-blue-500 mr-2">•</span>
+                                                        <span className="text-gray-700">{suggestion}</span>
+                                                    </li>
+                                                ))}
+                                            </ul>
+                                        </div>
+                                    )}
                                 </div>
                             )}
 
+                            {/* 迭代输入区域 */}
                             <div className="border-t pt-4">
-                                <h4 className="text-md font-semibold mb-3">迭代优化</h4>
+                                <h4 className="text-md font-semibold mb-3">继续优化</h4>
                                 <div className="space-y-3">
                                     <div>
                                         <label className="block text-sm font-medium text-gray-700 mb-2">
-                                            迭代提示
+                                            优化建议
                                         </label>
                                         <textarea
                                             value={iterationPrompt}
@@ -292,7 +390,7 @@ export default function SmartTextProcessor({ selectedText, onProcess, onClose }:
                                             disabled={isIterating || !iterationPrompt.trim()}
                                             className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
                                         >
-                                            {isIterating ? '迭代中...' : '迭代优化'}
+                                            {isIterating ? '优化中...' : '发送优化建议'}
                                         </button>
                                     </div>
                                 </div>
@@ -300,16 +398,20 @@ export default function SmartTextProcessor({ selectedText, onProcess, onClose }:
 
                             <div className="flex justify-end space-x-3">
                                 <button
-                                    onClick={() => setResult(null)}
+                                    onClick={() => {
+                                        setResult(null)
+                                        setChatMessages([])
+                                        setCurrentVersion(null)
+                                    }}
                                     className="px-4 py-2 text-gray-600 border border-gray-300 rounded-md hover:bg-gray-50"
                                 >
                                     重新处理
                                 </button>
                                 <button
-                                    onClick={handleInsert}
+                                    onClick={() => handleInsert()}
                                     className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
                                 >
-                                    插入结果
+                                    插入当前版本
                                 </button>
                             </div>
                         </div>

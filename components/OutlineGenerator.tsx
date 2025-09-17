@@ -15,6 +15,14 @@ interface OutlineResult {
     suggestions: string[]
 }
 
+interface ChatMessage {
+    id: string
+    type: 'user' | 'assistant'
+    content: string
+    timestamp: Date
+    result?: OutlineResult
+}
+
 interface OutlineGeneratorProps {
     onInsert: (content: string) => void
     onClose: () => void
@@ -31,6 +39,8 @@ export default function OutlineGenerator({ onInsert, onClose, currentDocument = 
     const [error, setError] = useState<string | null>(null)
     const [iterationPrompt, setIterationPrompt] = useState('')
     const [isIterating, setIsIterating] = useState(false)
+    const [chatMessages, setChatMessages] = useState<ChatMessage[]>([])
+    const [currentVersion, setCurrentVersion] = useState<OutlineResult | null>(null)
 
     // 从当前文档中提取标题
     useEffect(() => {
@@ -77,7 +87,19 @@ export default function OutlineGenerator({ onInsert, onClose, currentDocument = 
             const data = await response.json()
 
             if (data.success) {
-                setResult(data.data)
+                const newResult = data.data
+                setResult(newResult)
+                setCurrentVersion(newResult)
+                
+                // 添加初始生成消息到聊天记录
+                const initialMessage: ChatMessage = {
+                    id: Date.now().toString(),
+                    type: 'assistant',
+                    content: `已为标题"${title}"生成大纲和开头段落`,
+                    timestamp: new Date(),
+                    result: newResult
+                }
+                setChatMessages([initialMessage])
             } else {
                 setError(data.error || '生成大纲失败')
             }
@@ -89,13 +111,22 @@ export default function OutlineGenerator({ onInsert, onClose, currentDocument = 
     }
 
     const handleIterate = async () => {
-        if (!result || !iterationPrompt.trim()) {
+        if (!currentVersion || !iterationPrompt.trim()) {
             setError('请输入迭代提示')
             return
         }
 
         setIsIterating(true)
         setError(null)
+
+        // 添加用户消息到聊天记录
+        const userMessage: ChatMessage = {
+            id: Date.now().toString(),
+            type: 'user',
+            content: iterationPrompt.trim(),
+            timestamp: new Date()
+        }
+        setChatMessages(prev => [...prev, userMessage])
 
         try {
             const response = await fetch('/api/outline', {
@@ -109,15 +140,26 @@ export default function OutlineGenerator({ onInsert, onClose, currentDocument = 
                     length,
                     contentHint: contentHint.trim() || undefined,
                     iterationPrompt: iterationPrompt.trim(),
-                    currentOutline: result.outline,
-                    currentIntroduction: result.introduction
+                    currentOutline: currentVersion.outline,
+                    currentIntroduction: currentVersion.introduction
                 }),
             })
 
             const data = await response.json()
 
             if (data.success) {
-                setResult(data.data)
+                const newResult = data.data
+                setCurrentVersion(newResult)
+                
+                // 添加AI回复消息到聊天记录
+                const assistantMessage: ChatMessage = {
+                    id: (Date.now() + 1).toString(),
+                    type: 'assistant',
+                    content: `已根据您的反馈优化大纲，主要改进包括：${data.data.suggestions?.join('、') || '结构优化和内容完善'}`,
+                    timestamp: new Date(),
+                    result: newResult
+                }
+                setChatMessages(prev => [...prev, assistantMessage])
                 setIterationPrompt('')
             } else {
                 setError(data.error || '迭代生成失败')
@@ -129,21 +171,27 @@ export default function OutlineGenerator({ onInsert, onClose, currentDocument = 
         }
     }
 
-    const handleInsertOutline = () => {
-        if (!result) return
+    const handleInsertOutline = (version?: OutlineResult) => {
+        const targetResult = version || currentVersion
+        if (!targetResult) return
 
         // 生成包含描述文本的完整大纲HTML
-        const outlineHtml = generateCompleteOutlineHtml(result.outline, result.introduction)
+        const outlineHtml = generateCompleteOutlineHtml(targetResult.outline, targetResult.introduction)
         onInsert(outlineHtml)
         onClose()
     }
 
-    const handleInsertIntroduction = () => {
-        if (!result) return
+    const handleInsertIntroduction = (version?: OutlineResult) => {
+        const targetResult = version || currentVersion
+        if (!targetResult) return
 
-        const content = `<p>${result.introduction}</p>`
+        const content = `<p>${targetResult.introduction}</p>`
         onInsert(content)
         onClose()
+    }
+
+    const handleSelectVersion = (version: OutlineResult) => {
+        setCurrentVersion(version)
     }
 
     const generateCompleteOutlineHtml = (outline: OutlineItem[], introduction: string): string => {
@@ -292,42 +340,85 @@ export default function OutlineGenerator({ onInsert, onClose, currentDocument = 
                                 <p className="text-green-700">已为标题"{title}"生成大纲和开头段落</p>
                             </div>
 
-                            <div>
-                                <h3 className="text-lg font-semibold mb-3">文章大纲</h3>
-                                <div className="space-y-2">
-                                    {result.outline.map((item, index) => (
-                                        <OutlineItemComponent key={index} item={item} />
+                            {/* 聊天记录区域 */}
+                            <div className="border rounded-lg">
+                                <div className="bg-gray-50 px-4 py-2 border-b">
+                                    <h3 className="text-lg font-semibold">迭代历史</h3>
+                                    <p className="text-sm text-gray-600">查看和选择不同版本的大纲</p>
+                                </div>
+                                
+                                <div className="max-h-96 overflow-y-auto p-4 space-y-4">
+                                    {chatMessages.map((message, index) => (
+                                        <div key={message.id} className={`flex ${message.type === 'user' ? 'justify-end' : 'justify-start'}`}>
+                                            <div className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${
+                                                message.type === 'user' 
+                                                    ? 'bg-blue-500 text-white' 
+                                                    : 'bg-gray-100 text-gray-800'
+                                            }`}>
+                                                <div className="text-sm font-medium mb-1">
+                                                    {message.type === 'user' ? '您' : 'AI助手'}
+                                                </div>
+                                                <div className="text-sm">{message.content}</div>
+                                                {message.result && (
+                                                    <div className="mt-2 pt-2 border-t border-gray-200">
+                                                        <div className="text-xs text-gray-500 mb-2">大纲预览：</div>
+                                                        <div className="text-xs space-y-1">
+                                                            {message.result.outline.slice(0, 3).map((item, idx) => (
+                                                                <div key={idx} className="truncate">
+                                                                    {item.title}
+                                                                </div>
+                                                            ))}
+                                                            {message.result.outline.length > 3 && (
+                                                                <div className="text-gray-400">...等{message.result.outline.length}个章节</div>
+                                                            )}
+                                                        </div>
+                                                        <div className="flex space-x-2 mt-2">
+                                                            <button
+                                                                onClick={() => handleSelectVersion(message.result!)}
+                                                                className="text-xs px-2 py-1 bg-blue-500 text-white rounded hover:bg-blue-600"
+                                                            >
+                                                                选择此版本
+                                                            </button>
+                                                            <button
+                                                                onClick={() => handleInsertOutline(message.result)}
+                                                                className="text-xs px-2 py-1 bg-green-500 text-white rounded hover:bg-green-600"
+                                                            >
+                                                                插入此版本
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
                                     ))}
                                 </div>
                             </div>
 
-                            <div>
-                                <h3 className="text-lg font-semibold mb-3">开头段落</h3>
-                                <div className="bg-gray-50 p-4 rounded-md">
-                                    <p className="text-gray-700 leading-relaxed">{result.introduction}</p>
-                                </div>
-                            </div>
-
-                            {result.suggestions.length > 0 && (
+                            {/* 当前版本预览 */}
+                            {currentVersion && (
                                 <div>
-                                    <h3 className="text-lg font-semibold mb-3">写作建议</h3>
-                                    <ul className="space-y-1">
-                                        {result.suggestions.map((suggestion, index) => (
-                                            <li key={index} className="flex items-start">
-                                                <span className="text-blue-500 mr-2">•</span>
-                                                <span className="text-gray-700">{suggestion}</span>
-                                            </li>
-                                        ))}
-                                    </ul>
+                                    <h3 className="text-lg font-semibold mb-3">当前版本预览</h3>
+                                    <div className="bg-gray-50 p-4 rounded-md">
+                                        <div className="space-y-2">
+                                            {currentVersion.outline.map((item, index) => (
+                                                <OutlineItemComponent key={index} item={item} />
+                                            ))}
+                                        </div>
+                                        <div className="mt-4 pt-4 border-t">
+                                            <h4 className="font-medium mb-2">开头段落：</h4>
+                                            <p className="text-sm text-gray-700">{currentVersion.introduction}</p>
+                                        </div>
+                                    </div>
                                 </div>
                             )}
 
+                            {/* 迭代输入区域 */}
                             <div className="border-t pt-4">
-                                <h4 className="text-md font-semibold mb-3">迭代优化</h4>
+                                <h4 className="text-md font-semibold mb-3">继续优化</h4>
                                 <div className="space-y-3">
                                     <div>
                                         <label className="block text-sm font-medium text-gray-700 mb-2">
-                                            迭代提示
+                                            优化建议
                                         </label>
                                         <textarea
                                             value={iterationPrompt}
@@ -343,7 +434,7 @@ export default function OutlineGenerator({ onInsert, onClose, currentDocument = 
                                             disabled={isIterating || !iterationPrompt.trim()}
                                             className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
                                         >
-                                            {isIterating ? '迭代中...' : '迭代优化'}
+                                            {isIterating ? '优化中...' : '发送优化建议'}
                                         </button>
                                     </div>
                                 </div>
@@ -351,22 +442,26 @@ export default function OutlineGenerator({ onInsert, onClose, currentDocument = 
 
                             <div className="flex justify-end space-x-3">
                                 <button
-                                    onClick={() => setResult(null)}
+                                    onClick={() => {
+                                        setResult(null)
+                                        setChatMessages([])
+                                        setCurrentVersion(null)
+                                    }}
                                     className="px-4 py-2 text-gray-600 border border-gray-300 rounded-md hover:bg-gray-50"
                                 >
                                     重新生成
                                 </button>
                                 <button
-                                    onClick={handleInsertIntroduction}
+                                    onClick={() => handleInsertIntroduction()}
                                     className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700"
                                 >
                                     仅插入开头
                                 </button>
                                 <button
-                                    onClick={handleInsertOutline}
+                                    onClick={() => handleInsertOutline()}
                                     className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
                                 >
-                                    插入完整大纲
+                                    插入当前版本
                                 </button>
                             </div>
                         </div>

@@ -54,7 +54,7 @@ const Editor = React.forwardRef<EditorApi, EditorProps>(function Editor({ value,
             }),
             // Collaboration on content is temporarily disabled to keep document stable.
         ],
-        content: value || '<p></p>',
+        content: value || '<p><br></p>',
         immediatelyRender: false,
         onUpdate({ editor }) {
             onChange(editor.getHTML())
@@ -488,7 +488,8 @@ const Editor = React.forwardRef<EditorApi, EditorProps>(function Editor({ value,
             {showOutlineGenerator && (
                 <OutlineGenerator
                     onInsert={(content) => {
-                        editor?.chain().focus().insertContent(content).run()
+                        // 对于大纲生成，替换整个文档内容
+                        editor?.chain().focus().setContent(content).run()
                         setShowOutlineGenerator(false)
                     }}
                     onClose={() => setShowOutlineGenerator(false)}
@@ -546,10 +547,10 @@ function ToolbarBtn({ onClick, active, disabled, children }: { onClick: () => vo
         <button
             type="button"
             className={`p-2 rounded-md transition-all duration-200 flex items-center justify-center ${disabled
-                    ? 'text-gray-400 cursor-not-allowed'
-                    : active
-                        ? 'bg-blue-100 text-blue-700 shadow-sm'
-                        : 'text-gray-600 hover:bg-gray-200 hover:text-gray-800'
+                ? 'text-gray-400 cursor-not-allowed'
+                : active
+                    ? 'bg-blue-100 text-blue-700 shadow-sm'
+                    : 'text-gray-600 hover:bg-gray-200 hover:text-gray-800'
                 }`}
             onClick={onClick}
             disabled={disabled}

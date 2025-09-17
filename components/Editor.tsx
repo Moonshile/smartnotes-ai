@@ -4,6 +4,9 @@ import { useEditor, EditorContent } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import Link from '@tiptap/extension-link'
 import Placeholder from '@tiptap/extension-placeholder'
+import TextStyle from '@tiptap/extension-text-style'
+import Color from '@tiptap/extension-color'
+import Highlight from '@tiptap/extension-highlight'
 import OutlineGenerator from './OutlineGenerator'
 import SmartTextProcessor from './SmartTextProcessor'
 import ResearchPanel from './ResearchPanel'
@@ -38,9 +41,17 @@ const Editor = React.forwardRef<EditorApi, EditorProps>(function Editor({ value,
 
     const editor = useEditor({
         extensions: [
-            StarterKit.configure({ heading: { levels: [1, 2, 3] }, codeBlock: {} }),
+            StarterKit.configure({ 
+                heading: { levels: [1, 2, 3] }, 
+                codeBlock: {},
+            }),
             Link.configure({ openOnClick: false }),
             Placeholder.configure({ placeholder: 'Write your notes here…' }),
+            TextStyle,
+            Color,
+            Highlight.configure({
+                multicolor: true,
+            }),
             // Collaboration on content is temporarily disabled to keep document stable.
         ],
         content: value || '<p></p>',
@@ -56,6 +67,20 @@ const Editor = React.forwardRef<EditorApi, EditorProps>(function Editor({ value,
                 if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 's') {
                     event.preventDefault()
                     doSave()
+                    return true
+                }
+                
+                // 处理快捷键
+                if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'b') {
+                    // Cmd/Ctrl + B 加粗
+                    event.preventDefault()
+                    editor?.chain().focus().toggleBold().run()
+                    return true
+                }
+                if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'i') {
+                    // Cmd/Ctrl + I 斜体
+                    event.preventDefault()
+                    editor?.chain().focus().toggleItalic().run()
                     return true
                 }
                 if (event.key !== 'Enter') return false
@@ -285,7 +310,7 @@ const Editor = React.forwardRef<EditorApi, EditorProps>(function Editor({ value,
 
                         {/* 快捷提示 */}
                         <div className="hidden lg:block text-xs text-gray-500 bg-gray-50 px-3 py-1.5 rounded-full">
-                            💡 输入 /summarize, /rewrite, /extract 使用快捷命令
+                            💡 使用 Cmd/Ctrl+B 加粗，Cmd/Ctrl+I 斜体，或 /summarize, /rewrite, /extract 命令
                         </div>
                     </div>
 

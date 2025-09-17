@@ -366,14 +366,14 @@ export default function OutlineGenerator({ onInsert, onClose, currentDocument = 
                                     {chatMessages.map((message, index) => (
                                         <div key={message.id} className={`flex ${message.type === 'user' ? 'justify-end' : 'justify-start'}`}>
                                             <div className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${message.type === 'user'
-                                                    ? 'bg-blue-500 text-white'
-                                                    : 'bg-gray-100 text-gray-800'
+                                                ? 'bg-blue-500 text-white'
+                                                : 'bg-gray-100 text-gray-800'
                                                 }`}>
                                                 <div className="text-sm font-medium mb-1">
                                                     {message.type === 'user' ? '您' : 'AI助手'}
                                                 </div>
                                                 <div className="text-sm">{message.content}</div>
-                                                
+
                                                 {/* 用户提示展示 */}
                                                 {message.type === 'user' && message.userPrompt && (
                                                     <div className="mt-2 pt-2 border-t border-blue-300">
@@ -397,7 +397,7 @@ export default function OutlineGenerator({ onInsert, onClose, currentDocument = 
                                                                 <div className="text-gray-400">...等{message.result.outline.length}个章节</div>
                                                             )}
                                                         </div>
-                                                        
+
                                                         {/* 展开/收起按钮 */}
                                                         <div className="mt-2">
                                                             <button

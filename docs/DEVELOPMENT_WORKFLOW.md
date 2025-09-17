@@ -2,7 +2,7 @@
 
 ## 📋 必须遵循的流程
 
-### 每次代码修改后必须执行：
+### 每次代码修改后必须执行
 
 1. **立即更新CHANGELOG.md** ✅
    - 在版本历史开头添加新版本记录
@@ -24,7 +24,8 @@
 
 ### 📝 文档更新模板
 
-#### CHANGELOG.md 新版本记录模板：
+#### CHANGELOG.md 新版本记录模板
+
 ```markdown
 ### vX.X.X - 功能名称 (YYYY-MM-DD)
 
@@ -41,7 +42,8 @@
 - 技术细节2
 ```
 
-#### SUMMARY.md 功能迭代记录模板：
+#### SUMMARY.md 功能迭代记录模板
+
 ```markdown
 ### vX.X.X - 功能名称 (YYYY-MM-DD)
 
@@ -58,7 +60,8 @@
 - 技术细节2
 ```
 
-#### docs/README.md 版本信息更新：
+#### docs/README.md 版本信息更新
+
 ```markdown
 - **版本**: vX.X.X
 - **创建日期**: YYYY年MM月DD日

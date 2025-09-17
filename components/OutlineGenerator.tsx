@@ -44,16 +44,18 @@ export default function OutlineGenerator({ onInsert, onClose, currentDocument = 
     const [chatMessages, setChatMessages] = useState<ChatMessage[]>([])
     const [currentVersion, setCurrentVersion] = useState<OutlineResult | null>(null)
     const [expandedMessages, setExpandedMessages] = useState<Set<string>>(new Set())
+    const [isInitialized, setIsInitialized] = useState(false)
 
-    // 从当前文档中提取标题
+    // 从当前文档中提取标题（只在组件初始化时执行一次）
     useEffect(() => {
-        if (currentDocument && !title) {
+        if (currentDocument && !isInitialized) {
             const extractedTitle = extractTitleFromDocument(currentDocument)
             if (extractedTitle) {
                 setTitle(extractedTitle)
             }
+            setIsInitialized(true)
         }
-    }, [currentDocument, title])
+    }, [currentDocument, isInitialized])
 
     // 自动推测文章类型和长度
     useEffect(() => {
@@ -190,14 +192,14 @@ export default function OutlineGenerator({ onInsert, onClose, currentDocument = 
         if (!targetResult) return
 
         let content = targetResult.introduction
-        
+
         // 检查是否包含markdown语法，如果包含则解析为HTML
         if (containsMarkdown(content)) {
             content = parseMarkdownToHtml(content)
         } else {
             content = `<p>${content}</p>`
         }
-        
+
         onInsert(content)
         onClose()
     }

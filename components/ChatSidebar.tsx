@@ -34,7 +34,7 @@ export default function ChatSidebar({ docHTML, onInsert }: { docHTML: string; on
         setMessages((m) => [...m, user])
         setInput('')
         setLoading(true)
-        
+
         // 检测是否需要搜索
         const needsSearch = shouldSearch(input)
         if (needsSearch) {

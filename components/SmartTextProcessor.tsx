@@ -35,6 +35,8 @@ export default function SmartTextProcessor({ selectedText, onProcess, onClose, d
     const [loading, setLoading] = useState(false)
     const [result, setResult] = useState<TextProcessResult | null>(null)
     const [error, setError] = useState<string | null>(null)
+    const [streamingContent, setStreamingContent] = useState('')
+    const [isStreaming, setIsStreaming] = useState(false)
     const [iterationPrompt, setIterationPrompt] = useState('')
     const [isIterating, setIsIterating] = useState(false)
     const [chatMessages, setChatMessages] = useState<ChatMessage[]>([])
@@ -65,6 +67,8 @@ export default function SmartTextProcessor({ selectedText, onProcess, onClose, d
 
         setLoading(true)
         setError(null)
+        setIsStreaming(true)
+        setStreamingContent('')
 
         try {
             // 如果启用搜索，先自动搜索相关资料
@@ -72,7 +76,7 @@ export default function SmartTextProcessor({ selectedText, onProcess, onClose, d
                 await handleAutoSearch()
             }
 
-            const response = await fetch('/api/text-process', {
+            const response = await fetch('/api/text-process-stream', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -87,27 +91,62 @@ export default function SmartTextProcessor({ selectedText, onProcess, onClose, d
                 }),
             })
 
-            const data = await response.json()
+            if (!response.ok) {
+                throw new Error('请求失败')
+            }
 
-            if (data.success) {
-                const newResult = data.data
-                setResult(newResult)
-                setCurrentVersion(newResult)
+            const reader = response.body?.getReader()
+            if (!reader) {
+                throw new Error('无法读取响应流')
+            }
 
-                // 添加初始处理消息到聊天记录
-                const initialMessage: ChatMessage = {
-                    id: Date.now().toString(),
-                    type: 'assistant',
-                    content: `已成功${getOperationLabel(operation)}选中文本`,
-                    timestamp: new Date(),
-                    result: newResult
+            const decoder = new TextDecoder()
+            let fullContent = ''
+
+            while (true) {
+                const { done, value } = await reader.read()
+                if (done) break
+
+                const chunk = decoder.decode(value)
+                const lines = chunk.split('\n')
+
+                for (const line of lines) {
+                    if (line.startsWith('data: ')) {
+                        try {
+                            const data = JSON.parse(line.slice(6))
+                            
+                            if (data.type === 'content') {
+                                fullContent += data.content
+                                setStreamingContent(fullContent)
+                            } else if (data.type === 'complete') {
+                                const newResult = data.data
+                                setResult(newResult)
+                                setCurrentVersion(newResult)
+                                setIsStreaming(false)
+
+                                // 添加初始处理消息到聊天记录
+                                const initialMessage: ChatMessage = {
+                                    id: Date.now().toString(),
+                                    type: 'assistant',
+                                    content: `已成功${getOperationLabel(operation)}选中文本`,
+                                    timestamp: new Date(),
+                                    result: newResult
+                                }
+                                setChatMessages([initialMessage])
+                            } else if (data.type === 'error') {
+                                setError(data.message)
+                                setIsStreaming(false)
+                            }
+                        } catch (e) {
+                            // 忽略解析错误
+                        }
+                    }
                 }
-                setChatMessages([initialMessage])
-            } else {
-                setError(data.error || '文本处理失败')
             }
         } catch (err) {
-            setError('网络错误，请稍后再试')
+            console.error('Text process error:', err)
+            setError('文本处理失败，请稍后再试')
+            setIsStreaming(false)
         } finally {
             setLoading(false)
         }
@@ -602,17 +641,36 @@ export default function SmartTextProcessor({ selectedText, onProcess, onClose, d
                             </div>
 
                             {/* 当前版本预览 */}
-                            {currentVersion && (
+                            {(currentVersion || isStreaming) && (
                                 <div>
-                                    <h3 className="text-lg font-semibold mb-3">当前版本预览</h3>
+                                    <h3 className="text-lg font-semibold mb-3">
+                                        当前版本预览
+                                        {isStreaming && (
+                                            <span className="ml-2 text-sm text-blue-600 font-normal">
+                                                (正在生成...)
+                                            </span>
+                                        )}
+                                    </h3>
                                     <div className="bg-gray-50 p-4 rounded-md">
                                         <div className="text-gray-700 leading-relaxed prose prose-sm max-w-none">
-                                            <ReactMarkdown remarkPlugins={[remarkGfm, remarkBreaks]}>
-                                                {currentVersion.processedText}
-                                            </ReactMarkdown>
+                                            {isStreaming ? (
+                                                <div>
+                                                    <ReactMarkdown remarkPlugins={[remarkGfm, remarkBreaks]}>
+                                                        {streamingContent}
+                                                    </ReactMarkdown>
+                                                    <div className="mt-2 text-sm text-gray-500">
+                                                        <div className="inline-block w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
+                                                        <span className="ml-2">AI正在思考中...</span>
+                                                    </div>
+                                                </div>
+                                            ) : currentVersion ? (
+                                                <ReactMarkdown remarkPlugins={[remarkGfm, remarkBreaks]}>
+                                                    {currentVersion.processedText}
+                                                </ReactMarkdown>
+                                            ) : null}
                                         </div>
                                     </div>
-                                    {currentVersion.suggestions.length > 0 && (
+                                    {currentVersion && currentVersion.suggestions.length > 0 && (
                                         <div className="mt-3">
                                             <h4 className="font-medium mb-2">改进建议：</h4>
                                             <ul className="space-y-1">

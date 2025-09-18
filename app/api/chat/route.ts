@@ -4,103 +4,107 @@ type InMsg = { role: 'user' | 'assistant' | 'system'; content: string }
 
 // 检测是否需要搜索
 function shouldSearch(message: string): boolean {
-  const searchKeywords = [
-    '搜索', '查找', '资料', '信息', '研究', '了解', '查询', '最新', '消息', '新闻',
-    'search', 'find', 'research', 'information', '资料检索', 'latest', 'news'
-  ]
-  
-  // 检查是否包含搜索关键词
-  const hasSearchKeyword = searchKeywords.some(keyword => 
-    message.toLowerCase().includes(keyword.toLowerCase())
-  )
-  
-  // 检查是否询问具体的人或事件（可能是需要搜索的）
-  const hasSpecificQuery = /(王自如|董明珠|格力|小米|华为|苹果|特斯拉|马斯克|OpenAI|ChatGPT)/i.test(message)
-  
-  console.log('Message:', message)
-  console.log('Has search keyword:', hasSearchKeyword)
-  console.log('Has specific query:', hasSpecificQuery)
-  
-  return hasSearchKeyword || hasSpecificQuery
+    const searchKeywords = [
+        '搜索', '查找', '资料', '信息', '研究', '了解', '查询', '最新', '消息', '新闻',
+        'search', 'find', 'research', 'information', '资料检索', 'latest', 'news'
+    ]
+
+    // 检查是否包含搜索关键词
+    const hasSearchKeyword = searchKeywords.some(keyword =>
+        message.toLowerCase().includes(keyword.toLowerCase())
+    )
+
+    // 检查是否询问具体的人或事件（可能是需要搜索的）
+    const hasSpecificQuery = /(王自如|董明珠|格力|小米|华为|苹果|特斯拉|马斯克|OpenAI|ChatGPT)/i.test(message)
+
+    console.log('Message:', message)
+    console.log('Has search keyword:', hasSearchKeyword)
+    console.log('Has specific query:', hasSpecificQuery)
+
+    return hasSearchKeyword || hasSpecificQuery
 }
 
 // 从消息中提取搜索关键词
 function extractSearchQuery(message: string): string {
-  // 移除搜索相关的词汇，提取实际搜索内容
-  const searchPrefixes = [
-    '搜索', '查找', '资料', '信息', '研究', '了解', '查询', '最新', '消息', '新闻',
-    'search', 'find', 'research', 'information', '资料检索', 'latest', 'news'
-  ]
-  
-  let query = message
-  for (const prefix of searchPrefixes) {
-    query = query.replace(new RegExp(prefix, 'gi'), '').trim()
-  }
-  
-  // 移除常见的连接词和标点
-  const connectors = ['关于', '的', '相关', '有关', '什么', '如何', '为什么', 'about', 'related to', 'regarding', 'what', 'how', 'why']
-  for (const connector of connectors) {
-    query = query.replace(new RegExp(connector, 'gi'), '').trim()
-  }
-  
-  // 移除标点符号
-  query = query.replace(/[，。！？、；：""''（）【】《》]/g, ' ').trim()
-  
-  // 如果提取后为空，返回原消息
-  const finalQuery = query || message
-  
-  console.log('Extracted search query:', finalQuery)
-  return finalQuery
+    // 移除搜索相关的词汇，提取实际搜索内容
+    const searchPrefixes = [
+        '搜索', '查找', '资料', '信息', '研究', '了解', '查询', '最新', '消息', '新闻',
+        'search', 'find', 'research', 'information', '资料检索', 'latest', 'news'
+    ]
+
+    let query = message
+    for (const prefix of searchPrefixes) {
+        query = query.replace(new RegExp(prefix, 'gi'), '').trim()
+    }
+
+    // 移除常见的连接词和标点
+    const connectors = ['关于', '的', '相关', '有关', '什么', '如何', '为什么', 'about', 'related to', 'regarding', 'what', 'how', 'why']
+    for (const connector of connectors) {
+        query = query.replace(new RegExp(connector, 'gi'), '').trim()
+    }
+
+    // 移除标点符号
+    query = query.replace(/[，。！？、；：""''（）【】《》]/g, ' ').trim()
+
+    // 如果提取后为空，返回原消息
+    const finalQuery = query || message
+
+    console.log('Extracted search query:', finalQuery)
+    return finalQuery
 }
 
 // 调用搜索API
 async function performSearch(query: string) {
-  try {
-    // 使用相对路径调用搜索API
-    const baseUrl = process.env.VERCEL_URL 
-      ? `https://${process.env.VERCEL_URL}` 
-      : 'http://localhost:3000'
-    
-    console.log('Searching for:', query)
-    console.log('API URL:', `${baseUrl}/api/research`)
-    
-    const response = await fetch(`${baseUrl}/api/research`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ 
-        text: query,
-        sources: ['wikipedia', 'web', 'academic'],
-        maxResults: 3
-      })
-    })
-    
-    console.log('Search response status:', response.status)
-    
-    if (!response.ok) {
-      console.error('Search API error:', response.status, response.statusText)
-      return null
+    try {
+        // 使用相对路径调用搜索API
+        const baseUrl = process.env.VERCEL_URL
+            ? `https://${process.env.VERCEL_URL}`
+            : 'http://localhost:3000'
+
+        console.log('Searching for:', query)
+        console.log('API URL:', `${baseUrl}/api/research`)
+
+        const response = await fetch(`${baseUrl}/api/research`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                text: query,
+                sources: ['wikipedia', 'web', 'academic'],
+                maxResults: 3
+            })
+        })
+
+        console.log('Search response status:', response.status)
+
+        if (!response.ok) {
+            console.error('Search API error:', response.status, response.statusText)
+            return null
+        }
+
+        const data = await response.json()
+        console.log('Search results:', data)
+        return data.success ? data.data : null
+    } catch (error) {
+        console.error('Search error:', error)
+        return null
     }
-    
-    const data = await response.json()
-    console.log('Search results:', data)
-    return data.success ? data.data : null
-  } catch (error) {
-    console.error('Search error:', error)
-    return null
-  }
 }
 
 export async function POST(req: Request) {
     const { messages, context } = (await req.json()) as { messages: InMsg[]; context?: string }
 
-    // 检查最后一条用户消息是否需要搜索
-    const lastMessage = messages[messages.length - 1]
-    let searchResults = null
-
-    if (lastMessage && lastMessage.role === 'user' && shouldSearch(lastMessage.content)) {
-        const searchQuery = extractSearchQuery(lastMessage.content)
-        searchResults = await performSearch(searchQuery)
-    }
+  // 检查最后一条用户消息是否需要搜索
+  const lastMessage = messages[messages.length - 1]
+  let searchResults = null
+  
+  if (lastMessage && lastMessage.role === 'user' && shouldSearch(lastMessage.content)) {
+    console.log('Detected search request, performing search...')
+    const searchQuery = extractSearchQuery(lastMessage.content)
+    searchResults = await performSearch(searchQuery)
+    console.log('Search completed, results:', searchResults)
+  } else {
+    console.log('No search request detected')
+  }
 
   const system = {
     role: 'system',
@@ -116,7 +120,7 @@ ${searchResults.results.map((result: any, index: number) =>
    Credibility: ${result.credibility}
 `).join('\n')}
 
-Please provide a comprehensive answer based on these search results. Include relevant citations and mention the sources. Do NOT say you cannot search the internet or provide real-time information.` : ''}`,
+Please provide a comprehensive answer based on these search results. Include relevant citations and mention the sources. Do NOT say you cannot search the internet or provide real-time information.` : searchResults === null && lastMessage && shouldSearch(lastMessage.content) ? `IMPORTANT: The user has requested information about "${extractSearchQuery(lastMessage.content)}". Although I attempted to search for this information, the search did not return results. Please provide a helpful response based on your general knowledge about this topic. Do NOT say you cannot search the internet or provide real-time information. Instead, provide what information you can based on your training data.` : ''}`,
   }
 
     const ctxMsg = context

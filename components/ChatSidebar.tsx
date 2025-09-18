@@ -8,6 +8,7 @@ export default function ChatSidebar({ docHTML, onInsert }: { docHTML: string; on
     const [messages, setMessages] = useState<Message[]>([])
     const [input, setInput] = useState('')
     const [loading, setLoading] = useState(false)
+    const [searching, setSearching] = useState(false)
     const listRef = useRef<HTMLDivElement>(null)
     const [showSmartInserter, setShowSmartInserter] = useState(false)
     const [smartInsertContent, setSmartInsertContent] = useState('')
@@ -18,12 +19,27 @@ export default function ChatSidebar({ docHTML, onInsert }: { docHTML: string; on
 
     const contextText = useMemo(() => stripHTML(docHTML).slice(0, 8000), [docHTML])
 
+    // 检测是否需要搜索
+    function shouldSearch(message: string): boolean {
+        const searchKeywords = [
+            '搜索', '查找', '资料', '信息', '研究', '了解', '查询',
+            'search', 'find', 'research', 'information', '资料检索'
+        ]
+        return searchKeywords.some(keyword => message.includes(keyword))
+    }
+
     async function send() {
         if (!input.trim() || loading) return
         const user: Message = { id: crypto.randomUUID(), role: 'user', content: input }
         setMessages((m) => [...m, user])
         setInput('')
         setLoading(true)
+        
+        // 检测是否需要搜索
+        const needsSearch = shouldSearch(input)
+        if (needsSearch) {
+            setSearching(true)
+        }
 
         try {
             const res = await fetch('/api/chat', {
@@ -50,7 +66,11 @@ export default function ChatSidebar({ docHTML, onInsert }: { docHTML: string; on
                     const trimmed = line.trim()
                     if (!trimmed.startsWith('data:')) continue
                     const data = trimmed.slice(5).trim()
-                    if (data === '[DONE]') continue
+                    if (data === '[DONE]') {
+                        setLoading(false)
+                        setSearching(false)
+                        continue
+                    }
                     try {
                         const json = JSON.parse(data)
                         const delta: string = json.delta || json.content || ''
@@ -68,6 +88,7 @@ export default function ChatSidebar({ docHTML, onInsert }: { docHTML: string; on
             setMessages((m) => [...m, { id: crypto.randomUUID(), role: 'assistant', content: 'Sorry, something went wrong.' }])
         } finally {
             setLoading(false)
+            setSearching(false)
         }
     }
 
@@ -76,6 +97,12 @@ export default function ChatSidebar({ docHTML, onInsert }: { docHTML: string; on
             <div className="p-4 border-b bg-white/60 backdrop-blur flex items-center gap-2">
                 <div className="size-7 rounded-md bg-black text-white grid place-items-center text-sm">AI</div>
                 <div className="font-medium gradient-text">Assistant</div>
+                {searching && (
+                    <div className="ml-2 flex items-center gap-1 text-sm text-blue-600">
+                        <div className="w-3 h-3 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+                        <span>搜索资料中...</span>
+                    </div>
+                )}
                 <div className="ml-auto" />
             </div>
             <div ref={listRef} className="flex-1 overflow-auto p-4 space-y-4 scroll-thin">

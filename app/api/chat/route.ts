@@ -2,13 +2,87 @@ export const runtime = 'edge'
 
 type InMsg = { role: 'user' | 'assistant' | 'system'; content: string }
 
+// 检测是否需要搜索
+function shouldSearch(message: string): boolean {
+  const searchKeywords = [
+    '搜索', '查找', '资料', '信息', '研究', '了解', '查询',
+    'search', 'find', 'research', 'information', '资料检索'
+  ]
+  return searchKeywords.some(keyword => message.includes(keyword))
+}
+
+// 从消息中提取搜索关键词
+function extractSearchQuery(message: string): string {
+  // 移除搜索相关的词汇，提取实际搜索内容
+  const searchPrefixes = [
+    '搜索', '查找', '资料', '信息', '研究', '了解', '查询',
+    'search', 'find', 'research', 'information', '资料检索'
+  ]
+  
+  let query = message
+  for (const prefix of searchPrefixes) {
+    query = query.replace(new RegExp(prefix, 'gi'), '').trim()
+  }
+  
+  // 移除常见的连接词
+  const connectors = ['关于', '的', '相关', '有关', 'about', 'related to', 'regarding']
+  for (const connector of connectors) {
+    query = query.replace(new RegExp(connector, 'gi'), '').trim()
+  }
+  
+  return query || message
+}
+
+// 调用搜索API
+async function performSearch(query: string) {
+  try {
+    const response = await fetch(`${process.env.VERCEL_URL ? 'https://' + process.env.VERCEL_URL : 'http://localhost:3000'}/api/research`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ 
+        text: query,
+        sources: ['wikipedia', 'web', 'academic'],
+        maxResults: 3
+      })
+    })
+    
+    if (!response.ok) return null
+    
+    const data = await response.json()
+    return data.success ? data.data : null
+  } catch (error) {
+    console.error('Search error:', error)
+    return null
+  }
+}
+
 export async function POST(req: Request) {
   const { messages, context } = (await req.json()) as { messages: InMsg[]; context?: string }
 
+  // 检查最后一条用户消息是否需要搜索
+  const lastMessage = messages[messages.length - 1]
+  let searchResults = null
+  
+  if (lastMessage && lastMessage.role === 'user' && shouldSearch(lastMessage.content)) {
+    const searchQuery = extractSearchQuery(lastMessage.content)
+    searchResults = await performSearch(searchQuery)
+  }
+
   const system = {
     role: 'system',
-    content:
-      'You are an assistant embedded in a note-taking app. Be concise, helpful, and reference the user\'s current document context when relevant. If the question is unrelated to the document, still answer normally. When summarizing or transforming text, operate only on the provided context unless asked otherwise.',
+    content: `You are an assistant embedded in a note-taking app. Be concise, helpful, and reference the user's current document context when relevant. If the question is unrelated to the document, still answer normally. When summarizing or transforming text, operate only on the provided context unless asked otherwise.
+
+${searchResults ? `The user has requested information about "${extractSearchQuery(lastMessage.content)}". Here are the search results:
+
+${searchResults.results.map((result: any, index: number) => 
+  `${index + 1}. **${result.title}** (${result.source})
+   ${result.summary}
+   URL: ${result.url}
+   Relevance: ${result.relevance}
+   Credibility: ${result.credibility}
+`).join('\n')}
+
+Please provide a comprehensive answer based on these search results, and include relevant citations.` : ''}`,
   }
 
   const ctxMsg = context
